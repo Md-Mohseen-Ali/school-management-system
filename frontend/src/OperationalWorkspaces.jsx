@@ -509,3 +509,59 @@ export function AuditWorkspace({ token }) {
       </div></article>)}</div>:<Empty title="No audit events recorded yet" description="Events appear here after tracked administrative and financial actions are performed."/>}
   </section>;
 }
+
+
+export function StudentResultsWorkspace({ token }) {
+  const [exams,setExams]=useState([]);
+  const [loading,setLoading]=useState(true);
+  const [error,setError]=useState('');
+  const [selectedExam,setSelectedExam]=useState('');
+  const [report,setReport]=useState(null);
+  const [busy,setBusy]=useState(false);
+
+  const load=useCallback(async()=>{
+    setLoading(true);setError('');
+    try{
+      const rows=rowsFrom(await apiRequest('/api/v1/student/examinations',{token}));
+      setExams(rows);
+      setSelectedExam((old)=>old || (rows[0]?.id ? String(rows[0].id) : ''));
+    }catch(e){setError(messageFrom(e));setExams([]);}
+    finally{setLoading(false);}
+  },[token]);
+  useEffect(()=>{load();},[load]);
+
+  async function openReport(e){
+    e.preventDefault();if(!selectedExam)return;
+    setBusy(true);setError('');setReport(null);
+    try{setReport(await apiRequest('/api/v1/student/examinations/'+encodeURIComponent(selectedExam)+'/report-card',{token}));}
+    catch(e){setError(messageFrom(e));}
+    finally{setBusy(false);}
+  }
+
+  return <section className="ops-workspace">
+    <SectionTitle eyebrow="STUDENT PORTAL" title="My examination results" description="View published results for examinations in which you are enrolled." action={<button className="ops-button secondary" onClick={load} disabled={loading}>↻ Refresh</button>}/>
+    {error&&<Notice type="error">{error}</Notice>}
+    {loading?<div className="ops-loading">Loading your published examinations…</div>:exams.length?<form className="lookup-form" onSubmit={openReport}>
+      <label>Published examination<select value={selectedExam} onChange={(e)=>{setSelectedExam(e.target.value);setReport(null);}} required>
+        {exams.map((exam)=><option value={exam.id} key={exam.id}>{exam.examName} · {exam.academicYear} · {exam.className} {exam.sectionName}</option>)}
+      </select></label>
+      <button className="button primary" disabled={busy}>{busy?'Loading…':'View my report card →'}</button>
+    </form>:<Empty title="No published results yet" description="Your examination report cards will appear here after the school publishes results."/>}
+    {report&&<div className="ops-card">
+      <div className="ops-card-head"><div><h3>{report.examName}</h3><p>{report.className} · {report.sectionName} · {report.academicYear}</p></div><span className="ops-badge good">Published</span></div>
+      <div className="result-summary">
+        <div><span>STUDENT</span><b>{report.studentName}</b></div>
+        <div><span>PERCENTAGE</span><b>{report.percentage}%</b></div>
+        <div><span>GRADE</span><b>{report.grade}</b></div>
+        <div><span>RESULT</span><b>{report.passed?'Passed':'Not passed'}</b></div>
+      </div>
+      <div className="ops-table-wrap"><table className="ops-table"><thead><tr><th>Subject</th><th>Exam date</th><th>Marks</th><th>Maximum</th><th>Pass marks</th><th>Attendance</th><th>Result</th></tr></thead>
+        <tbody>{(report.subjects||[]).map((subject)=><tr key={subject.examinationSubjectId}>
+          <td><b>{subject.subjectName}</b><small>{subject.subjectCode}</small></td>
+          <td>{subject.examinationDate}</td><td>{subject.marksObtained}</td><td>{subject.maxMarks}</td><td>{subject.passMarks}</td>
+          <td>{subject.attendanceStatus}</td><td><span className={'ops-badge '+(subject.passed?'good':'warn')}>{subject.passed?'Passed':'Failed'}</span></td>
+        </tr>)}</tbody>
+      </table></div>
+    </div>}
+  </section>;
+}

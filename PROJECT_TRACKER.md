@@ -61,7 +61,7 @@ Status meanings: **Verified** = passed the current feature-branch build or autom
 
 ## 3. Current feature-branch verification
 
-<badge>Verified candidate</badge>
+**Verified candidate**
 
 Tested code commit: 2daa58c3c8205edf8cd37d3125dcec66c0eebded  
 Full workflow: https://github.com/Md-Mohseen-Ali/school-management-system/actions/runs/43759111375

@@ -137,6 +137,11 @@ jobs:
           API_BASE_URL: http://localhost:8080
         run: node .github/scripts/e2e-provisioning.mjs
 
+      - name: Test student fee payment history
+        env:
+          API_BASE_URL: http://localhost:8080
+        run: node .github/scripts/e2e-student-payment-history.mjs
+
       - name: Test browser UI for all four roles
         env:
           FRONTEND_URL: http://localhost:5173

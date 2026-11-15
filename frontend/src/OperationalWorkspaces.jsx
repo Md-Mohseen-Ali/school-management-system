@@ -641,6 +641,8 @@ export function StudentFeesWorkspace({ token }) {
   const [error, setError] = useState('');
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState(null);
+  const [payments, setPayments] = useState([]);
+  const [detailLoading, setDetailLoading] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true); setError('');
@@ -650,6 +652,24 @@ export function StudentFeesWorkspace({ token }) {
     finally { setLoading(false); }
   }, [token]);
   useEffect(() => { load(); }, [load]);
+
+  async function openInvoice(invoice) {
+    setSelected(invoice);
+    setPayments([]);
+    setDetailLoading(true);
+    try {
+      const [detail, history] = await Promise.all([
+        apiRequest('/api/v1/student/fees/invoices/' + invoice.id, { token }),
+        apiRequest('/api/v1/student/fees/invoices/' + invoice.id + '/payments', { token })
+      ]);
+      setSelected(detail);
+      setPayments(rowsFrom(history));
+    } catch (e) {
+      setError(messageFrom(e));
+    } finally {
+      setDetailLoading(false);
+    }
+  }
 
   const filtered = invoices.filter(invoice => JSON.stringify(invoice).toLowerCase().includes(query.toLowerCase()));
   const totalDue = invoices.reduce((sum, invoice) => sum + Number(invoice.balance || 0), 0);
@@ -673,7 +693,7 @@ export function StudentFeesWorkspace({ token }) {
           <td><b>{invoice.invoiceNumber}</b><small>#{invoice.id}</small></td>
           <td>{invoice.academicYear}</td><td>{invoice.issueDate}</td><td>{invoice.dueDate}</td>
           <td>{money(invoice.totalAmount)}</td><td>{money(invoice.amountPaid)}</td><td><b>{money(invoice.balance)}</b></td>
-          <td><Badge value={invoice.status}/></td><td><button className="ops-text-button" onClick={()=>setSelected(invoice)}>View items</button></td>
+          <td><Badge value={invoice.status}/></td><td><button className="ops-text-button" onClick={()=>openInvoice(invoice)}>Invoice details</button></td>
         </tr>)}</tbody>
       </table></div> : <Empty title="No fee invoices yet" description="Issued school invoices will appear here when they are assigned to your student record."/>}
       <div className="ops-info-strip"><span>ⓘ</span><p>This is a read-only student view. Your guardian or the school office handles simulated payment recording.</p></div>
@@ -684,6 +704,8 @@ export function StudentFeesWorkspace({ token }) {
         <div className="ops-invoice-total"><span>Invoice total</span><b>{money(selected.totalAmount)}</b></div>
         <div className="ops-invoice-total"><span>Amount paid</span><b>{money(selected.amountPaid)}</b></div>
         <div className="ops-invoice-total balance"><span>Outstanding balance</span><b>{money(selected.balance)}</b></div>
+        <div className="ops-panel-heading"><div><span className="eyebrow">PAYMENT RECORD</span><h3>Simulated payment history</h3></div><span className="ops-count">{payments.length} entries</span></div>
+        {detailLoading ? <div className="ops-loading">Loading payment history…</div> : payments.length ? <div className="ops-table-wrap"><table className="ops-table"><thead><tr><th>Reference</th><th>Paid amount</th><th>Method</th><th>Status</th><th>Date</th></tr></thead><tbody>{payments.map(payment=><tr key={payment.id}><td>{payment.paymentReference}</td><td>{money(payment.amount)}</td><td>{pretty(payment.paymentMethod)}</td><td><Badge value={payment.paymentStatus}/></td><td>{payment.paidAt?new Date(payment.paidAt).toLocaleString('en-IN'):'—'}</td></tr>)}</tbody></table></div> : <Empty title="No payments recorded" description="Your guardian or the school office has not recorded a payment for this invoice yet."/>}
       </div>
     </Modal>}
   </section>;

@@ -48,7 +48,6 @@ const TITLES = {
   myfees: ['My fees', 'Review your issued invoices and outstanding balance.'],
   myresults: ['My results', 'View your own published examination results.'],
   profile: ['My profile', 'Your account details, school role and linked academic information.'],
-  profile: ['Your profile', 'Review your signed-in account and session details.'],
 };
 
 const DEMO_LOGINS = [

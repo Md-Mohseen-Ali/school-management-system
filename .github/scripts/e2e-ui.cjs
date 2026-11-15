@@ -89,6 +89,7 @@ async function hasNoUiError(page,label) {
     await navigate(guardian.page,"Student report cards");
     await guardian.page.getByLabel("Student").waitFor({state:"visible",timeout:15000});
     const guardianExam = guardian.page.getByLabel("Published examination");
+    await guardianExam.locator("option").filter({hasText:"E2E Results"}).first().waitFor({state:"attached",timeout:15000});
     const guardianExamId = await guardianExam.locator("option").evaluateAll(opts => opts.find(o => o.textContent.includes("E2E Results"))?.value || "");
     assert(guardianExamId,"Guardian UI did not load the published E2E examination");
     await guardianExam.selectOption(guardianExamId);

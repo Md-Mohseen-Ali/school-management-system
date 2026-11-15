@@ -4,6 +4,10 @@ on:
   push:
     branches:
       - test/production-smoke-2026-11-16
+      - feature/role-portals-profile-and-tracker
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: read
@@ -112,6 +116,11 @@ jobs:
         env:
           API_BASE_URL: http://localhost:8080
         run: node .github/scripts/e2e-fees.mjs
+
+      - name: Test role portals and account provisioning
+        env:
+          API_BASE_URL: http://localhost:8080
+        run: node .github/scripts/e2e-portals.mjs
 
       - name: Test browser UI for all four roles
         env:

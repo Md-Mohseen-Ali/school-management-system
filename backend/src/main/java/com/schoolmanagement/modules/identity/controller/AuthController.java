@@ -161,7 +161,7 @@ public class AuthController {
                             item.put("admissionNumber", student.getAdmissionNumber());
                             item.put("studentName", student.getFirstName() + " " + student.getLastName());
                             item.put("relationship", link.getRelationship());
-                            item.put("primary", link.isPrimary());
+                            item.put("primary", link.isPrimaryGuardian());
                             return item;
                         }).toList());
             });

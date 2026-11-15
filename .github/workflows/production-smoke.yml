@@ -1,0 +1,22 @@
+name: Production smoke test
+
+on:
+  push:
+    branches:
+      - test/production-smoke-2026-11-16
+
+permissions:
+  contents: read
+
+jobs:
+  production-smoke:
+    name: Read-only production API and RBAC checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Run read-only smoke tests
+        env:
+          API_BASE_URL: https://school-management-system-z7gg.onrender.com
+        run: node .github/scripts/production-smoke.mjs

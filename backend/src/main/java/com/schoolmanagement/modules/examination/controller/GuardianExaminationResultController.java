@@ -7,6 +7,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.schoolmanagement.modules.academic.repository.StudentGuardianRepository;
 import com.schoolmanagement.modules.academic.repository.StudentEnrollmentRepository;
@@ -24,6 +25,7 @@ import com.schoolmanagement.modules.identity.repository.GuardianProfileRepositor
 @RequestMapping("/api/v1/guardian/examinations")
 @PreAuthorize("hasRole('GUARDIAN')")
 public class GuardianExaminationResultController {
+    @Transactional(readOnly = true)
 
     private final GuardianProfileRepository guardianRepository;
     private final StudentGuardianRepository studentGuardianRepository;

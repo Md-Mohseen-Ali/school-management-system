@@ -89,7 +89,8 @@ export function AcademicWorkspace({item,token}) {
       setOptionLoading(true);
       const pairs=await Promise.all(selectable.map(async (f)=>{
         try {
-          const data=await apiRequest(f[4],{token});
+          const optionPath=f[4]+(f[4].includes('?')?'&':'?')+'size=100';
+          const data=await apiRequest(optionPath,{token});
           const found=rowsOf(data);
           const labelFn=f[7];
           return [f[0],found.map((x)=>({value:x[f[6]||'id'],label:typeof labelFn==='function'?labelFn(x):labelFn==='name'?x.name:(x.employeeCode||x.name||(x.className&&x.sectionName?(x.className+' · '+x.sectionName):null)||x.sectionName||x.subjectName||x.admissionNumber||(x.alternatePhone?('Guardian #'+x.id+' · '+x.alternatePhone):null)||x.email||('Record #'+x.id))}))];

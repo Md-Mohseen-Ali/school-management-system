@@ -12,6 +12,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: school-management-e2e-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   full-stack-e2e:
     name: Database, API and browser workflows

@@ -17,6 +17,8 @@ public interface StudentEnrollmentRepository extends
 
     boolean existsByStudent_IdAndEndDateIsNull(Long studentId);
 
+    java.util.Optional<StudentEnrollment> findFirstByStudent_IdAndEndDateIsNullOrderByStartDateDesc(Long studentId);
+
     java.util.List<StudentEnrollment> findByStudent_IdInAndEndDateIsNull(java.util.List<Long> studentIds);
     
     @Query("""

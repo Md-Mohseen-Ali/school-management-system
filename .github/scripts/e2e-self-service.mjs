@@ -68,8 +68,12 @@ async function run() {
 
   const childExams = await expect("Guardian loads published examinations for selected linked child",
     await api(guardian,"/api/v1/guardian/examinations/students/"+ownChild.id),200);
-  check("Student-specific exam options only contain the child's enrolled section",
-    rows(childExams).every(x=>String(x.sectionId)===String(guardianHistory.length ? rows(guardianHistory)[0].sessionId === -1 ? -1 : x.sectionId : x.sectionId)));
+  const allGuardianExams = await expect("Guardian aggregate published examination list",
+    await api(guardian,"/api/v1/guardian/examinations"),200);
+  check("Student-specific exam choices include the child's E2E published exam",
+    rows(childExams).some(x=>String(x.examName||"").startsWith("E2E Results")));
+  check("Student-specific exam choices are a subset of guardian's published exams",
+    rows(childExams).every(x=>rows(allGuardianExams).some(y=>String(y.id)===String(x.id))));
   const unrelatedExamList = await api(guardian2,"/api/v1/guardian/examinations/students/"+ownChild.id);
   await expect("Second guardian cannot load another child's examination choices",unrelatedExamList,404);
 

@@ -45,9 +45,9 @@ async function expectedStatus(name, path, token, expected) {
 try {
   const frontend = await fetch(frontendOrigin + "/", { signal: AbortSignal.timeout(20000) });
   const frontendHtml = await frontend.text();
-  const scriptTags = [...frontendHtml.matchAll(/<script\\b[^>]*>/gi)].map(match => match[0]);
+  const scriptTags = [...frontendHtml.matchAll(/<script\${ch}[^>]*>/gi)].map(match => match[0]);
   const scriptPaths = scriptTags.flatMap(tag => {
-    const match = tag.match(/\\bsrc=["']([^"']+)["']/i);
+    const match = tag.match(/\${ch}src=["']([^"']+)["']/i);
     return match ? [match[1]] : [];
   });
   const hasRoot = /id=["']root["']/.test(frontendHtml);
@@ -55,7 +55,7 @@ try {
     "HTTP " + frontend.status + ", content-type " + (frontend.headers.get("content-type") || "unknown") +
     ", app root " + (hasRoot ? "found" : "missing") + ", script tags " + scriptTags.length +
     (frontend.status === 200 && hasRoot && scriptPaths.length > 0 ? "" :
-      ", response preview: " + frontendHtml.slice(0, 420).replace(/\\s+/g, " ")));
+      ", response preview: " + frontendHtml.slice(0, 420).replace(/\${ch}+/g, " ")));
   if (frontend.status === 200 && scriptPaths.length > 0) {
     const assetUrl = new URL(scriptPaths[0], frontendOrigin).toString();
     const asset = await fetch(assetUrl, { signal: AbortSignal.timeout(20000) });

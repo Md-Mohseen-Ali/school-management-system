@@ -61,41 +61,30 @@ public class StudentService {
             );
         }
 
-        boolean hasEmail = request.email() != null && !request.email().isBlank();
-        boolean hasPassword = request.initialPassword() != null && !request.initialPassword().isBlank();
-        if (hasEmail != hasPassword) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Provide both a student portal email and an initial password, or leave both blank");
-        }
-
-        if (hasEmail && appUserRepository.existsByEmailIgnoreCase(request.email().trim())) {
+        String email = request.email().trim().toLowerCase(Locale.ROOT);
+        if (appUserRepository.existsByEmailIgnoreCase(email)) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
                     "An account with this email already exists");
         }
 
-        AppUser portalUser = null;
-        if (hasEmail) {
-            if (request.initialPassword().getBytes(StandardCharsets.UTF_8).length > 72) {
-                throw new ResponseStatusException(
-                        HttpStatus.BAD_REQUEST,
-                        "Initial password cannot exceed 72 UTF-8 bytes");
-            }
-            portalUser = new AppUser();
-            portalUser.setFullName(request.firstName().trim() + " " + request.lastName().trim());
-            portalUser.setEmail(request.email().trim().toLowerCase(Locale.ROOT));
-            portalUser.setPhone(request.phone() == null || request.phone().isBlank() ? null : request.phone().trim());
-            portalUser.setPasswordHash(passwordEncoder.encode(request.initialPassword()));
-            portalUser.setEnabled(true);
-            portalUser.setRoles(Set.of(UserRole.STUDENT));
-            portalUser = appUserRepository.saveAndFlush(portalUser);
+        if (request.initialPassword().getBytes(StandardCharsets.UTF_8).length > 72) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Initial password cannot exceed 72 UTF-8 bytes");
         }
 
+        AppUser portalUser = new AppUser();
+        portalUser.setFullName(request.firstName().trim() + " " + request.lastName().trim());
+        portalUser.setEmail(email);
+        portalUser.setPhone(request.phone() == null || request.phone().isBlank() ? null : request.phone().trim());
+        portalUser.setPasswordHash(passwordEncoder.encode(request.initialPassword()));
+        portalUser.setEnabled(true);
+        portalUser.setRoles(Set.of(UserRole.STUDENT));
+        portalUser = appUserRepository.saveAndFlush(portalUser);
+
         Student student = new Student();
-        if (portalUser != null) {
-            student.setUser(portalUser);
-        }
+        student.setUser(portalUser);
 
         student.setAdmissionNumber(admissionNumber);
         student.setFirstName(request.firstName().trim());

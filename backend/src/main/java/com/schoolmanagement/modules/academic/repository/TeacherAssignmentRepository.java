@@ -9,6 +9,8 @@ public interface TeacherAssignmentRepository extends
         JpaRepository<TeacherAssignment, Long>,
         JpaSpecificationExecutor<TeacherAssignment> {
 
+    java.util.List<TeacherAssignment> findByTeacher_IdAndActiveTrue(Long teacherId);
+
     boolean existsByTeacher_IdAndSection_IdAndSubject_IdAndActiveTrue(
             Long teacherId,
             Long sectionId,

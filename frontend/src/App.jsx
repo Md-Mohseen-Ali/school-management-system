@@ -144,7 +144,7 @@ function Overview({ token, roles, user, setActive }) {
         ['sessions', '/api/v1/attendance/sessions'], ['invoices', '/api/v1/fees/invoices'],
       ] : roles.includes('TEACHER') ? [
         ['sessions', '/api/v1/attendance/sessions'], ['exams', '/api/v1/teacher/examinations'],
-      ] : [['invoices', '/api/v1/fees/invoices']];
+      ] : roles.includes('GUARDIAN') ? [['invoices', '/api/v1/fees/invoices']] : [['exams', '/api/v1/student/examinations']];
       const values = await Promise.all(jobs.map(async ([key, path]) => {
         try {
           const response = await apiRequest(path + (path.includes('?') ? '&' : '?') + 'size=1', { token });
@@ -180,7 +180,7 @@ function Overview({ token, roles, user, setActive }) {
   ] : roles.includes('TEACHER') ? [
     ['Attendance sessions', count('sessions'), 'Your recorded sessions', '✓', 'green'],
     ['Examinations', count('exams'), 'Assessment workspace', '✎', 'blue'],
-  ] : [['Fee invoices', count('invoices'), 'Available invoice records', '₹', 'amber']];
+  ] : roles.includes('GUARDIAN') ? [['Fee invoices', count('invoices'), 'Available invoice records', '₹', 'amber']] : [['Published examinations', count('exams'), 'Your published results', '▤', 'blue']];
 
   return <>
     <div className="welcome-strip"><div><span className="eyebrow">SUNDAY, 15 NOVEMBER 2026</span><h2>{roles.includes('ADMIN') ? 'School at a glance' : `Welcome${user?.email ? `, ${user.email.split('@')[0]}` : ''}`}</h2><p>Here is what is happening across your school workspace today.</p></div><div className="health-pill"><span className={`status-dot ${health.toLowerCase() === 'up' || health.toLowerCase() === 'available' ? 'online' : ''}`} />API {health}</div></div>

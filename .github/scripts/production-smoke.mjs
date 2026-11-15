@@ -43,6 +43,23 @@ async function expectedStatus(name, path, token, expected) {
 }
 
 try {
+  const frontend = await fetch(frontendOrigin + "/", { signal: AbortSignal.timeout(20000) });
+  const frontendHtml = await frontend.text();
+  const scriptPaths = [...frontendHtml.matchAll(/<script[^>]+src="([^"]+\\.js)"/g)].map(match => match[1]);
+  record("Vercel frontend page", frontend.status === 200 && frontendHtml.includes('id="root"') && scriptPaths.length > 0,
+    "HTTP " + frontend.status + ", app root and script " + (scriptPaths.length > 0 ? "found" : "missing"));
+  if (frontend.status === 200 && scriptPaths.length > 0) {
+    const assetUrl = new URL(scriptPaths[0], frontendOrigin).toString();
+    const asset = await fetch(assetUrl, { signal: AbortSignal.timeout(20000) });
+    const assetText = await asset.text();
+    record("Vercel production bundle loads", asset.status === 200, "HTTP " + asset.status);
+    record("Frontend bundle targets deployed Render API", asset.status === 200 && assetText.includes(base),
+      asset.status === 200 && assetText.includes(base) ? "API base URL found" : "API base URL not found in first JS bundle");
+  } else {
+    record("Vercel production bundle loads", false, "could not locate frontend JS bundle");
+    record("Frontend bundle targets deployed Render API", false, "could not inspect frontend JS bundle");
+  }
+
   const health = await call("/actuator/health");
   const healthJson = await readJson(health);
   record("Render actuator health", health.status === 200 && healthJson?.status === "UP",

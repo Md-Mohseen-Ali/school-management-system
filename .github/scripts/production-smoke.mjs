@@ -45,9 +45,17 @@ async function expectedStatus(name, path, token, expected) {
 try {
   const frontend = await fetch(frontendOrigin + "/", { signal: AbortSignal.timeout(20000) });
   const frontendHtml = await frontend.text();
-  const scriptPaths = [...frontendHtml.matchAll(/<script[^>]+src="([^"]+\\.js)"/g)].map(match => match[1]);
-  record("Vercel frontend page", frontend.status === 200 && frontendHtml.includes('id="root"') && scriptPaths.length > 0,
-    "HTTP " + frontend.status + ", app root and script " + (scriptPaths.length > 0 ? "found" : "missing"));
+  const scriptTags = [...frontendHtml.matchAll(/<script\\b[^>]*>/gi)].map(match => match[0]);
+  const scriptPaths = scriptTags.flatMap(tag => {
+    const match = tag.match(/\\bsrc=["']([^"']+)["']/i);
+    return match ? [match[1]] : [];
+  });
+  const hasRoot = /id=["']root["']/.test(frontendHtml);
+  record("Vercel frontend page", frontend.status === 200 && hasRoot && scriptPaths.length > 0,
+    "HTTP " + frontend.status + ", content-type " + (frontend.headers.get("content-type") || "unknown") +
+    ", app root " + (hasRoot ? "found" : "missing") + ", script tags " + scriptTags.length +
+    (frontend.status === 200 && hasRoot && scriptPaths.length > 0 ? "" :
+      ", response preview: " + frontendHtml.slice(0, 420).replace(/\\s+/g, " ")));
   if (frontend.status === 200 && scriptPaths.length > 0) {
     const assetUrl = new URL(scriptPaths[0], frontendOrigin).toString();
     const asset = await fetch(assetUrl, { signal: AbortSignal.timeout(20000) });

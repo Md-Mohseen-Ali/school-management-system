@@ -1,5 +1,5 @@
-export const BASE = "https://school-management-system-z7gg.onrender.com";
-export const FRONTEND = "https://algions-school-management.vercel.app";
+export const BASE = (process.env.API_BASE_URL || "http://localhost:8080").replace(/\/$/, "");
+export const FRONTEND = (process.env.FRONTEND_URL || "http://localhost:5173").replace(/\/$/, "");
 export const results = [];
 export let failures = 0;
 

@@ -4,8 +4,8 @@ import { apiRequest, rowsFrom } from './api.js';
 const CONFIG = {
   students: {
     title: 'Students', path: '/api/v1/academic/students', serverSearch: true,
-    columns: ['admissionNumber', 'firstName', 'lastName', 'dateOfBirth', 'status'],
-    createFields: [['admissionNumber','Admission number','text',true],['firstName','First name','text',true],['lastName','Last name','text',true],['dateOfBirth','Date of birth','date',false],['admissionDate','Admission date','date',true]],
+    columns: ['admissionNumber', 'firstName', 'lastName', 'email', 'portalAccessEnabled', 'status'],
+    createFields: [['admissionNumber','Admission number','text',true],['firstName','First name','text',true],['lastName','Last name','text',true],['dateOfBirth','Date of birth','date',false],['admissionDate','Admission date','date',true],['email','Student portal email','email',true],['phone','Phone number','tel',false],['initialPassword','Initial portal password (min. 12 characters)','password',true]],
     editFields: [['firstName','First name','text',true],['lastName','Last name','text',true],['dateOfBirth','Date of birth','date',false],['status','Status','enum',true,null,[{value:'ACTIVE',label:'Active'},{value:'INACTIVE',label:'Inactive'},{value:'GRADUATED',label:'Graduated'}]]],
     editable: true, deactivatePath:(r)=>'/api/v1/academic/students/'+r.id,
   },

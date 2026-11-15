@@ -25,12 +25,11 @@ import com.schoolmanagement.modules.identity.repository.TeacherProfileRepository
  * handled by ExaminationMarksController, which performs the same assignment
  * check before writing.
  */
+@Transactional(readOnly = true)
 @RestController
 @RequestMapping("/api/v1/teacher/examinations")
 @PreAuthorize("hasRole('TEACHER')")
 public class TeacherExaminationController {
-    @Transactional(readOnly = true)
-
     private final ExaminationRepository examinationRepository;
     private final ExaminationSubjectRepository subjectRepository;
     private final TeacherProfileRepository teacherRepository;

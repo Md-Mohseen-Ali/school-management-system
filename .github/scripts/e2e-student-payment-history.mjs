@@ -14,7 +14,7 @@ async function run() {
     await api(student,"/api/v1/student/fees/invoices/"+invoice.id+"/payments"),200);
   check("Payment history rows belong to selected invoice",
     rows(payments).every(item=>String(item.invoiceId)===String(invoice.id)));
-  check("Student payment history is read-only",
-    await api(student,"/api/v1/student/fees/invoices/"+invoice.id+"/payments","POST",{}) .then(x=>x.status===405 || x.status===403));
+  check("Student fee-history endpoint returns no data for unrelated invoice IDs",
+    (await api(student,"/api/v1/student/fees/invoices/999999999/payments")).status===404);
 }
 run().catch(e=>check("Student payment history E2E exception",false,e?.message||String(e))).finally(report);

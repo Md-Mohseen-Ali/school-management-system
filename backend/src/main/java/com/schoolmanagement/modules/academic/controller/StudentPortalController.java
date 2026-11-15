@@ -25,6 +25,8 @@ import com.schoolmanagement.modules.attendance.repository.AttendanceRecordReposi
 import com.schoolmanagement.modules.attendance.service.AttendanceReportService;
 import com.schoolmanagement.modules.fees.dto.FeeInvoiceResponse;
 import com.schoolmanagement.modules.fees.service.FeeInvoiceService;
+import com.schoolmanagement.modules.fees.service.FeePaymentService;
+import com.schoolmanagement.modules.fees.dto.FeePaymentResponse;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
@@ -39,18 +41,21 @@ public class StudentPortalController {
     private final AttendanceReportService attendanceReportService;
     private final AttendanceRecordRepository attendanceRecordRepository;
     private final FeeInvoiceService feeInvoiceService;
+    private final FeePaymentService feePaymentService;
 
     public StudentPortalController(
             StudentRepository studentRepository,
             StudentEnrollmentRepository enrollmentRepository,
             AttendanceReportService attendanceReportService,
             AttendanceRecordRepository attendanceRecordRepository,
-            FeeInvoiceService feeInvoiceService) {
+            FeeInvoiceService feeInvoiceService,
+            FeePaymentService feePaymentService) {
         this.studentRepository = studentRepository;
         this.enrollmentRepository = enrollmentRepository;
         this.attendanceReportService = attendanceReportService;
         this.attendanceRecordRepository = attendanceRecordRepository;
         this.feeInvoiceService = feeInvoiceService;
+        this.feePaymentService = feePaymentService;
     }
 
     @GetMapping("/profile")
@@ -121,6 +126,14 @@ public class StudentPortalController {
             @PathVariable Long invoiceId,
             Authentication authentication) {
         return feeInvoiceService.getStudentInvoice(
+                invoiceId, authentication.getName());
+    }
+
+    @GetMapping("/fees/invoices/{invoiceId}/payments")
+    public List<FeePaymentResponse> getInvoicePayments(
+            @PathVariable Long invoiceId,
+            Authentication authentication) {
+        return feePaymentService.getStudentPaymentHistory(
                 invoiceId, authentication.getName());
     }
 

@@ -5,7 +5,6 @@ import java.time.LocalDate;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Past;
-import jakarta.validation.constraints.PastOrPresent;
 import jakarta.validation.constraints.Size;
 
 public record CreateStudentRequest(
@@ -24,7 +23,6 @@ public record CreateStudentRequest(
         @Past
         LocalDate dateOfBirth,
 
-        @PastOrPresent
         LocalDate admissionDate,
 
         @NotBlank

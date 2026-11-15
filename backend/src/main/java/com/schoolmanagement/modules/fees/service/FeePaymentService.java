@@ -117,17 +117,12 @@ public class FeePaymentService {
             );
         }
 
-        if (!admin && request.paymentMethod() != PaymentMethod.SIMULATED) {
-            throw new ResponseStatusException(
-                    HttpStatus.FORBIDDEN,
-                    "Guardians can only use simulated payments"
-            );
-        }
-
-        if (admin && request.paymentMethod() != PaymentMethod.CASH) {
+        // The assessment environment never collects or records real-money
+        // payments. This rule applies to every role, including administrators.
+        if (request.paymentMethod() != PaymentMethod.SIMULATED) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
-                    "Administrators must record payments using CASH method"
+                    "Only simulated payments are supported"
             );
         }
 

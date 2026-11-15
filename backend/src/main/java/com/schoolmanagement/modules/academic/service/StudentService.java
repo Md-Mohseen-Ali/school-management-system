@@ -21,15 +21,28 @@ import com.schoolmanagement.modules.academic.dto.UpdateStudentRequest;
 import com.schoolmanagement.modules.academic.entity.Student;
 import com.schoolmanagement.modules.academic.entity.StudentStatus;
 import com.schoolmanagement.modules.academic.repository.StudentRepository;
+import com.schoolmanagement.modules.identity.entity.AppUser;
+import com.schoolmanagement.modules.identity.entity.UserRole;
+import com.schoolmanagement.modules.identity.repository.AppUserRepository;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import java.nio.charset.StandardCharsets;
+import java.util.Set;
 
 @Service
 @Transactional
 public class StudentService {
 
     private final StudentRepository studentRepository;
+    private final AppUserRepository appUserRepository;
+    private final PasswordEncoder passwordEncoder;
 
-    public StudentService(StudentRepository studentRepository) {
+    public StudentService(
+            StudentRepository studentRepository,
+            AppUserRepository appUserRepository,
+            PasswordEncoder passwordEncoder) {
         this.studentRepository = studentRepository;
+        this.appUserRepository = appUserRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
     // Register student
@@ -48,7 +61,41 @@ public class StudentService {
             );
         }
 
+        boolean hasEmail = request.email() != null && !request.email().isBlank();
+        boolean hasPassword = request.initialPassword() != null && !request.initialPassword().isBlank();
+        if (hasEmail != hasPassword) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Provide both a student portal email and an initial password, or leave both blank");
+        }
+
+        if (hasEmail && appUserRepository.existsByEmailIgnoreCase(request.email().trim())) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "An account with this email already exists");
+        }
+
+        AppUser portalUser = null;
+        if (hasEmail) {
+            if (request.initialPassword().getBytes(StandardCharsets.UTF_8).length > 72) {
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST,
+                        "Initial password cannot exceed 72 UTF-8 bytes");
+            }
+            portalUser = new AppUser();
+            portalUser.setFullName(request.firstName().trim() + " " + request.lastName().trim());
+            portalUser.setEmail(request.email().trim().toLowerCase(Locale.ROOT));
+            portalUser.setPhone(request.phone() == null || request.phone().isBlank() ? null : request.phone().trim());
+            portalUser.setPasswordHash(passwordEncoder.encode(request.initialPassword()));
+            portalUser.setEnabled(true);
+            portalUser.setRoles(Set.of(UserRole.STUDENT));
+            portalUser = appUserRepository.saveAndFlush(portalUser);
+        }
+
         Student student = new Student();
+        if (portalUser != null) {
+            student.setUser(portalUser);
+        }
 
         student.setAdmissionNumber(admissionNumber);
         student.setFirstName(request.firstName().trim());
@@ -174,7 +221,9 @@ public class StudentService {
                 student.getLastName(),
                 student.getDateOfBirth(),
                 student.getAdmissionDate(),
-                student.getStatus()
+                student.getStatus(),
+                student.getUser() == null ? null : student.getUser().getEmail(),
+                student.getUser() != null && student.getUser().isEnabled()
         );
     }
 }

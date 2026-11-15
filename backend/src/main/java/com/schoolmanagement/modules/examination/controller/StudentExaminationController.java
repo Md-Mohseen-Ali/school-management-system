@@ -7,6 +7,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.schoolmanagement.modules.academic.entity.Student;
 import com.schoolmanagement.modules.academic.repository.StudentEnrollmentRepository;
@@ -25,6 +26,7 @@ import com.schoolmanagement.modules.examination.service.ExaminationResultService
 @RequestMapping("/api/v1/student/examinations")
 @PreAuthorize("hasRole('STUDENT')")
 public class StudentExaminationController {
+    @Transactional(readOnly = true)
 
     private final StudentRepository studentRepository;
     private final StudentEnrollmentRepository enrollmentRepository;

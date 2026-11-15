@@ -1,6 +1,7 @@
 package com.schoolmanagement.modules.academic.service;
 
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.Locale;
 import java.util.ArrayList;
 import java.util.List;
@@ -52,6 +53,13 @@ public class StudentService {
                 .trim()
                 .toUpperCase(Locale.ROOT);
 
+        LocalDate schoolToday = LocalDate.now(ZoneId.of("Asia/Kolkata"));
+        if (request.admissionDate() != null && request.admissionDate().isAfter(schoolToday)) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Admission date cannot be in the future in the school's timezone");
+        }
+
         if (studentRepository.existsByAdmissionNumberIgnoreCase(
                 admissionNumber)) {
 
@@ -94,7 +102,7 @@ public class StudentService {
         student.setAdmissionDate(
                 request.admissionDate() != null
                         ? request.admissionDate()
-                        : LocalDate.now()
+                        : LocalDate.now(ZoneId.of("Asia/Kolkata"))
         );
 
         student.setStatus(StudentStatus.ACTIVE);

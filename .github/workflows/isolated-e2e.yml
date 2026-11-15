@@ -81,6 +81,12 @@ jobs:
         working-directory: frontend
         run: npm ci
 
+      - name: Build frontend production bundle
+        working-directory: frontend
+        env:
+          VITE_API_BASE_URL: http://localhost:8080
+        run: npm run build
+
       - name: Start frontend
         working-directory: frontend
         env:

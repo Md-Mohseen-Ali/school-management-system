@@ -240,35 +240,58 @@ function formatCell(value) {
 
 
 function GuardianReportCard({ token }) {
-  const [examId, setExamId] = useState('1');
-  const [studentId, setStudentId] = useState('3');
+  const [students, setStudents] = useState([]);
+  const [exams, setExams] = useState([]);
+  const [studentId, setStudentId] = useState('');
+  const [examId, setExamId] = useState('');
   const [result, setResult] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    let live = true;
+    setLoading(true);
+    Promise.all([
+      apiRequest('/api/v1/guardian/students', { token }),
+      apiRequest('/api/v1/guardian/examinations', { token }),
+    ]).then(([studentData, examData]) => {
+      if (!live) return;
+      const linked = rowsFrom(studentData);
+      const published = rowsFrom(examData);
+      setStudents(linked);
+      setExams(published);
+      setStudentId(linked[0]?.id ? String(linked[0].id) : '');
+      setExamId(published[0]?.id ? String(published[0].id) : '');
+      setError('');
+    }).catch((e) => { if (live) setError(e.message || 'Could not load linked students and published examinations.'); })
+      .finally(() => { if (live) setLoading(false); });
+    return () => { live = false; };
+  }, [token]);
 
   async function lookup(event) {
     event.preventDefault();
+    if (!examId || !studentId) return;
     setBusy(true); setError(''); setResult(null);
     try {
-      const data = await apiRequest(`/api/v1/guardian/examinations/${encodeURIComponent(examId)}/students/${encodeURIComponent(studentId)}/report-card`, { token });
+      const data = await apiRequest('/api/v1/guardian/examinations/' + encodeURIComponent(examId) + '/students/' + encodeURIComponent(studentId) + '/report-card', { token });
       setResult(data);
     } catch (err) {
-      setError(`${err.status ? `${err.status} · ` : ''}${err.message}`);
-      setResult(err.payload || null);
+      setError(err.message || 'Report card could not be retrieved.');
+      setResult(null);
     } finally { setBusy(false); }
   }
 
   return <section className="panel report-lookup">
     <div className="panel-heading"><div><div className="eyebrow">FAMILY ACCESS</div><h3>Linked student report card</h3></div><span className="soft-tag">Guardian only</span></div>
-    <p className="report-intro">Enter an examination and student ID. The backend verifies that the student is linked to your guardian account before returning academic information.</p>
-    <form className="lookup-form" onSubmit={lookup}>
-      <label>Examination ID<input type="number" min="1" value={examId} onChange={(e) => setExamId(e.target.value)} required /></label>
-      <label>Student ID<input type="number" min="1" value={studentId} onChange={(e) => setStudentId(e.target.value)} required /></label>
+    <p className="report-intro">Only students linked to your guardian account and examinations with published results are available here.</p>
+    {loading ? <EmptyState compact text="Loading your linked students and published results…"/> : students.length && exams.length ? <form className="lookup-form" onSubmit={lookup}>
+      <label>Student<select value={studentId} onChange={(e) => { setStudentId(e.target.value); setResult(null); }} required>{students.map((student) => <option key={student.id} value={student.id}>{student.admissionNumber} · {student.firstName} {student.lastName}</option>)}</select></label>
+      <label>Published examination<select value={examId} onChange={(e) => { setExamId(e.target.value); setResult(null); }} required>{exams.map((exam) => <option key={exam.id} value={exam.id}>{exam.examName} · {exam.academicYear}</option>)}</select></label>
       <button className="button primary" disabled={busy}>{busy ? 'Retrieving…' : 'View report card →'}</button>
-    </form>
+    </form> : <EmptyState compact text={students.length ? 'No published examinations are available for your linked students yet.' : 'No students are linked to this guardian account.'}/>}
     {error && <div className="alert error"><b>Report card unavailable</b><span>{error}</span></div>}
-    {result && <div className="report-result"><div className="result-summary"><div><span>STUDENT</span><b>{result.studentName || result.student?.name || `Student #${studentId}`}</b></div><div><span>PERCENTAGE</span><b>{result.percentage ?? result.percentageScore ?? '—'}{result.percentage != null || result.percentageScore != null ? '%' : ''}</b></div><div><span>GRADE</span><b>{result.grade || '—'}</b></div><div><span>RESULT</span><b>{result.passed === true ? 'Passed' : result.passed === false ? 'Not passed' : '—'}</b></div></div><details className="json-view"><summary>View complete report card data</summary><pre>{JSON.stringify(result, null, 2)}</pre></details></div>}
-    {!result && !error && <EmptyState compact text="No report card loaded yet." />}
+    {result && <div className="report-result"><div className="result-summary"><div><span>STUDENT</span><b>{result.studentName || '—'}</b></div><div><span>PERCENTAGE</span><b>{result.percentage ?? '—'}{result.percentage != null ? '%' : ''}</b></div><div><span>GRADE</span><b>{result.grade || '—'}</b></div><div><span>RESULT</span><b>{result.passed ? 'Passed' : 'Not passed'}</b></div></div><div className="ops-table-wrap"><table className="ops-table"><thead><tr><th>Subject</th><th>Marks</th><th>Maximum</th><th>Pass marks</th><th>Result</th></tr></thead><tbody>{(result.subjects || []).map((subject) => <tr key={subject.examinationSubjectId}><td>{subject.subjectName}</td><td>{subject.marksObtained}</td><td>{subject.maxMarks}</td><td>{subject.passMarks}</td><td><Badge value={subject.passed ? 'PASSED' : 'FAILED'}/></td></tr>)}</tbody></table></div></div>}
   </section>;
 }
 

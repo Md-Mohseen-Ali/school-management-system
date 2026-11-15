@@ -253,3 +253,19 @@ Only record workflows that succeed on the final submitted revision.
 ## Assessment context
 
 Prepared for the ALGIONS AI LABS PRIVATE LIMITED Full-Stack Web Development Internship Project submission. External dependencies retain their own licenses. AI assistance used during development must be disclosed honestly in the submission form.
+
+## 16. Deployment architecture (Vercel + Render + Neon)
+
+The intended assessment deployment is split across three providers:
+
+- **Frontend:** React/Vite deployed to Vercel. Vercel project Root Directory is `frontend`, build command is `npm run build`, and output directory is `dist`.
+- **Backend:** Spring Boot deployed to Render as a Docker Web Service using `backend/Dockerfile`.
+- **Database:** PostgreSQL hosted on Neon. Use the direct, non-pooler connection URL for the backend's Flyway migration startup.
+
+Set `VITE_API_BASE_URL` in Vercel to the Render backend origin (for example `https://your-api.onrender.com`, no trailing slash). This variable is embedded at frontend build time and is not a secret. Do not place database credentials or the JWT signing secret in Vercel.
+
+Set `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, and `JWT_SECRET` in Render's backend environment settings. Keep `sslmode=require` in the Neon JDBC URL. Set `CORS_ALLOWED_ORIGINS` to the exact Vercel production origin (for example `https://your-project.vercel.app`, no trailing slash), then redeploy the backend.
+
+`frontend/vercel.json` provides an SPA fallback rewrite to `index.html` for client-side routes. Full dashboard, authentication and role workflows must be checked again against the deployed URLs before sharing the live deployment.
+
+See `DEPLOYMENT_VERCEL_RENDER_NEON.md` for step-by-step configuration and verification instructions.

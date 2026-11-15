@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { apiRequest, decodeJwt, extractToken, readRoles, rowsFrom } from './api.js';
-import { AttendanceWorkspace, ExaminationsWorkspace, FeesWorkspace, AuditWorkspace } from './OperationalWorkspaces.jsx';
+import { AttendanceWorkspace, ExaminationsWorkspace, FeesWorkspace, AuditWorkspace, StudentResultsWorkspace } from './OperationalWorkspaces.jsx';
 import { AcademicWorkspace } from './AcademicWorkspace.jsx';
 
 const NAV = [
@@ -15,7 +15,8 @@ const NAV = [
   { id: 'attendance', label: 'Attendance', group: 'Operations', icon: '✓', path: '/api/v1/attendance/sessions', roles: ['ADMIN', 'TEACHER'] },
   { id: 'examinations', label: 'Examinations', group: 'Operations', icon: '✎', path: '/api/v1/examinations', roles: ['ADMIN', 'TEACHER'] },
   { id: 'fees', label: 'Fee invoices', group: 'Finance', icon: '₹', path: '/api/v1/fees/invoices', roles: ['ADMIN', 'GUARDIAN'] },
-  { id: 'reportcard', label: 'Student report card', group: 'Family', icon: '▤', path: null, roles: ['GUARDIAN'] },
+  { id: 'reportcard', label: 'Student report cards', group: 'Family', icon: '▤', path: null, roles: ['GUARDIAN'] },
+  { id: 'myresults', label: 'My results', group: 'Learning', icon: '▤', path: '/api/v1/student/examinations', roles: ['STUDENT'] },
   { id: 'audit', label: 'Audit trail', group: 'Governance', icon: '◷', path: '/api/v1/audit-logs', roles: ['ADMIN'] },
 ];
 
@@ -32,7 +33,8 @@ const TITLES = {
   examinations: ['Examinations', 'Manage exams, marks and results.'],
   fees: ['Fee invoices', 'Review invoices, payments and balances.'],
   audit: ['Audit trail', 'Trace important administrative actions.'],
-  reportcard: ['Student report card', 'View the academic record of a linked student.'],
+  reportcard: ['Student report cards', 'View examination results for students linked to your account.'],
+  myresults: ['My results', 'View your own published examination results.'],
   profile: ['Your profile', 'Review your signed-in account and session details.'],
 };
 
@@ -348,7 +350,7 @@ export default function App() {
     <main className="main-area">
       <header className="topbar"><div className="breadcrumb"><span>Workspace</span><b>/</b><strong>{title[0]}</strong></div><div className="topbar-right"><div className="today-chip">◷ <span>Academic year 2026–27</span></div><button className="top-avatar" title="Profile" onClick={() => setActive('profile')}>{initials(profile?.email)}</button></div></header>
       <div className="page-content"><div className="page-heading"><div><div className="eyebrow">NORTHSTAR ACADEMY · MANAGEMENT PORTAL</div><h1>{title[0]}</h1><p>{title[1]}</p></div>{active !== 'overview' && active !== 'profile' && <span className="live-badge"><span/> Connected workspace</span>}</div>
-        {active === 'overview' ? <Overview token={token} roles={menuRoles} user={profile} setActive={setActive}/> : active === 'profile' ? <ProfilePage user={profile} roles={menuRoles} token={token}/> : active === 'reportcard' ? <GuardianReportCard token={token}/> : active === 'attendance' ? <AttendanceWorkspace token={token} roles={menuRoles}/> : active === 'examinations' ? <ExaminationsWorkspace token={token} roles={menuRoles}/> : active === 'fees' ? <FeesWorkspace token={token} roles={menuRoles}/> : active === 'audit' ? <AuditWorkspace token={token}/> : ['students','classes','sections','subjects','enrollments','assignments','guardians'].includes(active) ? <AcademicWorkspace key={active} item={effectiveItem} token={token}/> : <DataWorkspace key={active} item={effectiveItem} token={token}/>} 
+        {active === 'overview' ? <Overview token={token} roles={menuRoles} user={profile} setActive={setActive}/> : active === 'profile' ? <ProfilePage user={profile} roles={menuRoles} token={token}/> : active === 'reportcard' ? <GuardianReportCard token={token}/> : active === 'myresults' ? <StudentResultsWorkspace token={token}/> : active === 'attendance' ? <AttendanceWorkspace token={token} roles={menuRoles}/> : active === 'examinations' ? <ExaminationsWorkspace token={token} roles={menuRoles}/> : active === 'fees' ? <FeesWorkspace token={token} roles={menuRoles}/> : active === 'audit' ? <AuditWorkspace token={token}/> : ['students','classes','sections','subjects','enrollments','assignments','guardians'].includes(active) ? <AcademicWorkspace key={active} item={effectiveItem} token={token}/> : <DataWorkspace key={active} item={effectiveItem} token={token}/>} 
         <footer className="page-footer"><span>Northstar School Management</span><span>Secure session · Role-based access enforced by backend</span></footer>
       </div>
     </main>

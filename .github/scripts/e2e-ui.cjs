@@ -110,7 +110,7 @@ async function hasNoUiError(page,label) {
     await guardian.page.getByText(/Attendance history/).waitFor({state:"visible",timeout:15000});
     await hasNoUiError(guardian.page,"Guardian student attendance");
     await navigate(guardian.page,"My profile");
-    await guardian.page.getByText("Linked students",{exact:true}).waitFor({state:"visible",timeout:15000});
+    await guardian.page.getByRole("heading",{name:"Linked students",exact:true}).waitFor({state:"visible",timeout:15000});
     await hasNoUiError(guardian.page,"Guardian account profile");
     await guardian.context.close();
     process.stdout.write("PASS | Guardian UI linked report card, attendance, fee history and profile\n");

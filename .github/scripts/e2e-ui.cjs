@@ -128,7 +128,7 @@ async function hasNoUiError(page,label) {
     await student.page.getByText("PERCENTAGE",{exact:true}).waitFor({state:"visible",timeout:15000});
     await hasNoUiError(student.page,"Student results workspace");
     await navigate(student.page,"My attendance");
-    await student.page.getByText(/Attendance register/).waitFor({state:"visible",timeout:15000});
+    await student.page.getByText(/Attendance register/i).waitFor({state:"visible",timeout:15000});
     await hasNoUiError(student.page,"Student attendance workspace");
     await navigate(student.page,"My fees");
     await student.page.getByText(/Total billed/).waitFor({state:"visible",timeout:15000});

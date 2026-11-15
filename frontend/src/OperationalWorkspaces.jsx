@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { apiRequest, rowsFrom } from './api.js';
 
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => { const now = new Date(); return new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 10); };
 const money = (value) => value == null ? '—' : new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(Number(value));
 const pretty = (value) => String(value || '—').replaceAll('_', ' ').toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
 const get = (obj, ...keys) => { for (const key of keys) { const value = key.split('.').reduce((acc, part) => acc?.[part], obj); if (value != null) return value; } return undefined; };

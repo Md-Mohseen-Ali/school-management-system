@@ -45,12 +45,16 @@ async function expectedStatus(name, path, token, expected) {
 try {
   const frontend = await fetch(frontendOrigin + "/", { signal: AbortSignal.timeout(20000) });
   const frontendHtml = await frontend.text();
-  const scriptTags = [...frontendHtml.matchAll(/<script\${ch}[^>]*>/gi)].map(match => match[0]);
+  const scriptTags = frontendHtml.split("<script").slice(1).map(part => "<script" + part.slice(0, part.indexOf(">") + 1));
   const scriptPaths = scriptTags.flatMap(tag => {
-    const match = tag.match(/\${ch}src=["']([^"']+)["']/i);
-    return match ? [match[1]] : [];
+    const marker = tag.indexOf("src=");
+    if (marker < 0) return [];
+    const tail = tag.slice(marker + 4).trimStart();
+    const quote = tail[0];
+    const endQuote = tail.indexOf(quote, 1);
+    return (quote === "'" || quote === '"') && endQuote > 0 ? [tail.slice(1, endQuote)] : [];
   });
-  const hasRoot = /id=["']root["']/.test(frontendHtml);
+  const hasRoot = frontendHtml.includes('id="root"') || frontendHtml.includes("id='root'");
   record("Vercel frontend page", frontend.status === 200 && hasRoot && scriptPaths.length > 0,
     "HTTP " + frontend.status + ", content-type " + (frontend.headers.get("content-type") || "unknown") +
     ", app root " + (hasRoot ? "found" : "missing") + ", script tags " + scriptTags.length +

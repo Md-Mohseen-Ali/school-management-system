@@ -3,20 +3,21 @@ package com.schoolmanagement.modules.academic.dto;
 import java.time.LocalDate;
 
 import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Past;
 import jakarta.validation.constraints.PastOrPresent;
 import jakarta.validation.constraints.Size;
 
 public record CreateStudentRequest(
-        @jakarta.validation.constraints.NotBlank
+        @NotBlank
         @Size(max = 40)
         String admissionNumber,
 
-        @jakarta.validation.constraints.NotBlank
+        @NotBlank
         @Size(max = 80)
         String firstName,
 
-        @jakarta.validation.constraints.NotBlank
+        @NotBlank
         @Size(max = 80)
         String lastName,
 
@@ -26,6 +27,7 @@ public record CreateStudentRequest(
         @PastOrPresent
         LocalDate admissionDate,
 
+        @NotBlank
         @Email
         @Size(max = 180)
         String email,
@@ -33,6 +35,7 @@ public record CreateStudentRequest(
         @Size(max = 25)
         String phone,
 
+        @NotBlank
         @Size(min = 12, max = 72)
         String initialPassword
 ) {

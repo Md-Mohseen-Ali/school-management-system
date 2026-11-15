@@ -1,0 +1,27 @@
+NORTHSTAR SCHOOL MANAGEMENT — OPERATIONAL UI PATCH
+
+Files to copy into the repository root:
+  frontend/src/App.jsx                    (replace existing)
+  frontend/src/OperationalWorkspaces.jsx  (new file)
+  frontend/src/styles.css                 (replace existing)
+
+What changed:
+- Removed the generic API-action composer and raw JSON/endpoint inspection UI from the data pages.
+- Attendance now has a session list, class register, per-student Present/Absent/Late/Excused controls, save, submit and admin lock actions.
+- Examinations has a normal scheduling form and human-readable exam list.
+- Fee invoices has a create-invoice form, issue action, balance columns and simulated-payment dialog.
+- Audit trail has a readable chronological activity view and useful empty state.
+
+Integration notes:
+- Attendance uses the implemented session, enrollment, records, submit and lock API workflows.
+- Examination scheduling and fee invoice/payment create workflows call the existing REST routes. Their request DTOs were not included in the frontend source package, so validate those two write forms against the live backend response before relying on them for assessment.
+- No database schema or backend files are changed by this patch.
+- No production database records are fabricated by the frontend.
+
+After copying:
+1. Open PowerShell in <repository>\frontend.
+2. Run: npm run build
+3. Commit the three files in GitHub Desktop and Push origin.
+4. Vercel should redeploy from the updated main branch.
+
+The local environment used to prepare this patch did not have node_modules and could not reach the npm registry, so a full Vite build could not be run here. Both JSX files were syntax-parsed successfully.

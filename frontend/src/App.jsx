@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { apiRequest, decodeJwt, extractToken, readRoles, rowsFrom } from './api.js';
+import { AttendanceWorkspace, ExaminationsWorkspace, FeesWorkspace, AuditWorkspace } from './OperationalWorkspaces.jsx';
 
 const NAV = [
   { id: 'overview', label: 'Overview', group: 'Workspace', icon: '◫', path: null, roles: ['ADMIN', 'TEACHER', 'GUARDIAN', 'STUDENT'] },
@@ -195,21 +196,12 @@ function DataWorkspace({ item, token }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [query, setQuery] = useState('');
-  const [showJson, setShowJson] = useState(false);
-  const [method, setMethod] = useState('GET');
-  const [path, setPath] = useState(item.path || '');
-  const [body, setBody] = useState('{\n  \n}');
-  const [actionOpen, setActionOpen] = useState(false);
+  useEffect(() => { setPayload(null); setError(''); }, [item.id, item.path]);
 
-  useEffect(() => { setPath(item.path || ''); setPayload(null); setError(''); setActionOpen(false); setShowJson(false); }, [item.id, item.path]);
-
-  async function runRequest(custom = false) {
+  async function runRequest() {
     setBusy(true); setError('');
     try {
-      const result = await apiRequest(custom ? path : item.path, {
-        method: custom ? method : 'GET', token,
-        body: custom && method !== 'GET' && method !== 'DELETE' ? JSON.parse(body || '{}') : undefined,
-      });
+      const result = await apiRequest(item.path, { token });
       setPayload(result);
     } catch (err) {
       setError(`${err.status ? `${err.status} · ` : ''}${err.message}`);
@@ -228,14 +220,11 @@ function DataWorkspace({ item, token }) {
   const columns = useMemo(() => rows.length ? Object.keys(rows[0]).slice(0, 6) : [], [rows]);
 
   return <section className="workspace-page">
-    <div className="workspace-toolbar"><div className="record-count">{rows.length ? `${filtered.length} of ${rows.length} records` : 'Live API data'}</div><div className="toolbar-actions"><button className="button ghost" onClick={() => setShowJson((v) => !v)}>{showJson ? 'Hide JSON' : 'View JSON'}</button><button className="button primary" onClick={() => runRequest()} disabled={busy}>{busy ? <><span className="spinner"/> Loading</> : '↻ Refresh data'}</button></div></div>
+    <div className="workspace-toolbar"><div className="record-count">{rows.length ? `${filtered.length} of ${rows.length} records` : 'Live API data'}</div><div className="toolbar-actions"><button className="button primary" onClick={() => runRequest()} disabled={busy}>{busy ? <><span className="spinner"/> Loading</> : '↻ Refresh data'}</button></div></div>
     {error && <div className="alert error"><b>API request failed</b><span>{error}</span></div>}
-    <div className="panel data-panel"><div className="data-header"><div className="search-box"><span>⌕</span><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search records…" /></div><button className="button outline" onClick={() => setActionOpen((v) => !v)}>{actionOpen ? 'Close API action' : '＋ API action'}</button></div>
-      {actionOpen && <div className="action-composer"><div className="composer-title"><b>Execute an API action</b><span>Requests are still authorized by the backend.</span></div><div className="composer-row"><select value={method} onChange={(e) => setMethod(e.target.value)}><option>GET</option><option>POST</option><option>PUT</option><option>PATCH</option><option>DELETE</option></select><input value={path} onChange={(e) => setPath(e.target.value)} placeholder="/api/v1/..." /></div>{method !== 'GET' && method !== 'DELETE' && <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={5} spellCheck="false"/>}<button className="button primary" onClick={() => runRequest(true)} disabled={busy}>Send request →</button></div>}
-      {rows.length > 0 ? <div className="table-scroll"><table><thead><tr>{columns.map((key) => <th key={key}>{key.replace(/([A-Z])/g, ' $1')}</th>)}<th>Details</th></tr></thead><tbody>{filtered.map((row, index) => <tr key={row.id ?? row.studentId ?? index}>{columns.map((key) => <td key={key}>{formatCell(row[key])}</td>)}<td><details className="row-details"><summary>Inspect</summary><pre>{JSON.stringify(row, null, 2)}</pre></details></td></tr>)}</tbody></table></div> : <EmptyState text={busy ? 'Loading records…' : error ? 'Records are unavailable for this account.' : 'No records returned by this endpoint.'} />}
-      {showJson && <div className="json-view"><div className="json-title">Raw API response</div><pre>{JSON.stringify(payload, null, 2) || 'No response yet'}</pre></div>}
+    <div className="panel data-panel"><div className="data-header"><div className="search-box"><span>⌕</span><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search records…" /></div></div>
+      {rows.length > 0 ? <div className="table-scroll"><table><thead><tr>{columns.map((key) => <th key={key}>{key.replace(/([A-Z])/g, ' $1')}</th>)}</tr></thead><tbody>{filtered.map((row, index) => <tr key={row.id ?? row.studentId ?? index}>{columns.map((key) => <td key={key}>{formatCell(row[key])}</td>)}</tr>)}</tbody></table></div> : <EmptyState text={busy ? 'Loading records…' : error ? 'Records are unavailable for this account.' : 'No records returned by this endpoint.'} />}
     </div>
-    <div className="endpoint-note"><span className="lock-mini">▣</span><span>Connected endpoint</span><code>{item.path}</code><span className="endpoint-method">GET</span></div>
   </section>;
 }
 
@@ -331,7 +320,7 @@ export default function App() {
     <main className="main-area">
       <header className="topbar"><div className="breadcrumb"><span>Workspace</span><b>/</b><strong>{title[0]}</strong></div><div className="topbar-right"><div className="today-chip">◷ <span>Academic year 2026–27</span></div><button className="top-avatar" title="Profile" onClick={() => setActive('profile')}>{initials(profile?.email)}</button></div></header>
       <div className="page-content"><div className="page-heading"><div><div className="eyebrow">NORTHSTAR ACADEMY · MANAGEMENT PORTAL</div><h1>{title[0]}</h1><p>{title[1]}</p></div>{active !== 'overview' && active !== 'profile' && <span className="live-badge"><span/> Connected workspace</span>}</div>
-        {active === 'overview' ? <Overview token={token} roles={menuRoles} user={profile} setActive={setActive}/> : active === 'profile' ? <ProfilePage user={profile} roles={menuRoles} token={token}/> : active === 'reportcard' ? <GuardianReportCard token={token}/> : <DataWorkspace key={active} item={effectiveItem} token={token}/>} 
+        {active === 'overview' ? <Overview token={token} roles={menuRoles} user={profile} setActive={setActive}/> : active === 'profile' ? <ProfilePage user={profile} roles={menuRoles} token={token}/> : active === 'reportcard' ? <GuardianReportCard token={token}/> : active === 'attendance' ? <AttendanceWorkspace token={token} roles={menuRoles}/> : active === 'examinations' ? <ExaminationsWorkspace token={token} roles={menuRoles}/> : active === 'fees' ? <FeesWorkspace token={token} roles={menuRoles}/> : active === 'audit' ? <AuditWorkspace token={token}/> : <DataWorkspace key={active} item={effectiveItem} token={token}/>} 
         <footer className="page-footer"><span>Northstar School Management</span><span>Secure session · Role-based access enforced by backend</span></footer>
       </div>
     </main>

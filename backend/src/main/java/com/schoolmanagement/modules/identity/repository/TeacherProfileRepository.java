@@ -14,6 +14,8 @@ public interface TeacherProfileRepository
 
     List<TeacherProfile> findByActiveTrueOrderByEmployeeCodeAsc();
 
+    boolean existsByEmployeeCodeIgnoreCase(String employeeCode);
+
     @Query("""
         SELECT t
         FROM TeacherProfile t, AppUser u

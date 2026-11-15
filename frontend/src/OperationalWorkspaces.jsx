@@ -202,6 +202,15 @@ export function ExaminationsWorkspace({ token, roles = [] }) {
   const [markRemarks,setMarkRemarks] = useState({});
   const [marksLoading,setMarksLoading] = useState(false);
   const [marksSaved,setMarksSaved] = useState(false);
+  const [gradingScales,setGradingScales] = useState([]);
+  const [gradingLoading,setGradingLoading] = useState(false);
+  const [showGrading,setShowGrading] = useState(false);
+  const [gradingDraft,setGradingDraft] = useState({academicYear:'2026-2027',grade:'A',minPercentage:'80',maxPercentage:'100',remarks:''});
+  const [reportPreviewExam,setReportPreviewExam] = useState(null);
+  const [reportStudents,setReportStudents] = useState([]);
+  const [reportStudentId,setReportStudentId] = useState('');
+  const [reportCard,setReportCard] = useState(null);
+  const [reportBusy,setReportBusy] = useState(false);
   const [draft,setDraft] = useState({examName:'',sectionId:'',academicYear:'2026-2027',startDate:today(),endDate:today()});
 
   const load = useCallback(async () => {
@@ -223,6 +232,46 @@ export function ExaminationsWorkspace({ token, roles = [] }) {
       setSubjects(rowsFrom(subjectData));
     }).catch((e)=>setNotice({type:'error',text:'Could not load section/subject options: '+messageFrom(e)}));
   },[admin,token]);
+
+  const loadGradingScales = useCallback(async (academicYear='2026-2027') => {
+    if(!admin)return;
+    setGradingLoading(true);
+    try { setGradingScales(rowsFrom(await apiRequest('/api/v1/examinations/grading-scales?academicYear='+encodeURIComponent(academicYear),{token}))); }
+    catch(e) { setNotice({type:'error',text:'Could not load grading scale: '+messageFrom(e)}); }
+    finally { setGradingLoading(false); }
+  },[admin,token]);
+  useEffect(()=>{if(admin)loadGradingScales('2026-2027');},[admin,loadGradingScales]);
+
+  async function createGrade(e) {
+    e.preventDefault();setSaving(true);setNotice(null);
+    try {
+      await apiRequest('/api/v1/examinations/grading-scales',{method:'POST',token,body:{
+        academicYear:gradingDraft.academicYear,grade:gradingDraft.grade.trim().toUpperCase(),
+        minPercentage:Number(gradingDraft.minPercentage),maxPercentage:Number(gradingDraft.maxPercentage),remarks:gradingDraft.remarks||null,
+      }});
+      setNotice({type:'success',text:'Grading band saved.'});
+      await loadGradingScales(gradingDraft.academicYear);
+      setShowGrading(false);
+    } catch(e) { setNotice({type:'error',text:messageFrom(e)}); }
+    finally { setSaving(false); }
+  }
+
+  async function openAdminReport(exam) {
+    setReportPreviewExam(exam);setReportCard(null);setReportStudentId('');setReportBusy(true);
+    try {
+      if(!reportStudents.length) setReportStudents(rowsFrom(await apiRequest('/api/v1/academic/students?size=100',{token})));
+    } catch(e) { setNotice({type:'error',text:'Could not load students for report cards: '+messageFrom(e)}); }
+    finally { setReportBusy(false); }
+  }
+
+  async function loadAdminReport(e) {
+    e.preventDefault();if(!reportPreviewExam||!reportStudentId)return;
+    setReportBusy(true);setReportCard(null);setNotice(null);
+    try {
+      setReportCard(await apiRequest('/api/v1/examinations/'+reportPreviewExam.id+'/report-cards/'+reportStudentId,{token}));
+    } catch(e) { setNotice({type:'error',text:messageFrom(e)}); }
+    finally { setReportBusy(false); }
+  }
 
   async function createExam(e) {
     e.preventDefault(); setSaving(true); setNotice(null);
@@ -332,7 +381,7 @@ export function ExaminationsWorkspace({ token, roles = [] }) {
   const filtered=exams.filter((exam)=>JSON.stringify(exam).toLowerCase().includes(query.toLowerCase()));
   return <section className="ops-workspace">
     {notice&&<Notice type={notice.type} onClose={()=>setNotice(null)}>{notice.text}</Notice>}
-    <SectionTitle eyebrow="ASSESSMENT MANAGEMENT" title="Examinations" description="Create assessments, configure subjects, enter marks and publish results." action={admin&&<button className="ops-button primary" onClick={()=>setShowCreate(true)}>＋ Create examination</button>}/>
+    <SectionTitle eyebrow="ASSESSMENT MANAGEMENT" title="Examinations" description="Create assessments, configure subjects, enter marks and publish results." action={admin&&<div className="ops-actions"><button className="ops-button secondary" onClick={()=>{setShowGrading(true);loadGradingScales(gradingDraft.academicYear);}}>Grading scale</button><button className="ops-button primary" onClick={()=>setShowCreate(true)}>＋ Create examination</button></div>}/>
     <div className="ops-toolbar"><div className="ops-search"><span>⌕</span><input value={query} onChange={(e)=>setQuery(e.target.value)} placeholder="Search examinations…"/></div><button className="ops-button secondary" onClick={load} disabled={loading}>↻ Refresh</button></div>
     {error&&<Notice type="error">{error}</Notice>}
     {loading?<div className="ops-loading">Loading examinations…</div>:filtered.length?<div className="ops-table-wrap"><table className="ops-table"><thead><tr><th>Examination</th><th>Year</th><th>Section</th><th>Dates</th><th>Status</th><th>Actions</th></tr></thead><tbody>{filtered.map((exam)=><tr key={exam.id}><td><b>{exam.examName||'Exam #'+exam.id}</b></td><td>{exam.academicYear}</td><td>{exam.className} · {exam.sectionName}</td><td>{exam.startDate} – {exam.endDate}</td><td><Badge value={exam.status}/></td><td><div className="ops-inline-actions">
@@ -340,7 +389,23 @@ export function ExaminationsWorkspace({ token, roles = [] }) {
       {admin&&exam.status==='DRAFT'&&<button className="ops-text-button" disabled={saving} onClick={()=>examTransition(exam.id,'schedule')}>Schedule</button>}
       {admin&&exam.status==='SCHEDULED'&&<button className="ops-text-button" disabled={saving} onClick={()=>examTransition(exam.id,'complete')}>Complete</button>}
       {admin&&exam.status==='COMPLETED'&&<button className="ops-text-button" disabled={saving} onClick={()=>examTransition(exam.id,'publish')}>Publish</button>}
+      {admin&&exam.status==='PUBLISHED'&&<button className="ops-text-button" onClick={()=>openAdminReport(exam)}>Report card</button>}
     </div></td></tr>)}</tbody></table></div>:<Empty title="No examinations scheduled" description="Create an examination, add at least one subject, then schedule it." action={admin&&<button className="ops-button primary" onClick={()=>setShowCreate(true)}>Create examination</button>}/>}
+    {showGrading&&<Modal title="Grading scale" subtitle="Define non-overlapping grade bands for an academic year. These bands are used in report-card calculations." onClose={()=>setShowGrading(false)}>
+      <form className="ops-form" onSubmit={createGrade}>
+        <label>Academic year<input value={gradingDraft.academicYear} pattern="[0-9]{4}-[0-9]{4}" onChange={(e)=>setGradingDraft({...gradingDraft,academicYear:e.target.value})} required/></label>
+        <div className="ops-form-grid"><label>Grade<input maxLength="5" value={gradingDraft.grade} onChange={(e)=>setGradingDraft({...gradingDraft,grade:e.target.value})} required/></label><label>Remarks<input maxLength="100" value={gradingDraft.remarks} onChange={(e)=>setGradingDraft({...gradingDraft,remarks:e.target.value})}/></label><label>Minimum %<input type="number" min="0" max="100" step="0.01" value={gradingDraft.minPercentage} onChange={(e)=>setGradingDraft({...gradingDraft,minPercentage:e.target.value})} required/></label><label>Maximum %<input type="number" min={gradingDraft.minPercentage} max="100" step="0.01" value={gradingDraft.maxPercentage} onChange={(e)=>setGradingDraft({...gradingDraft,maxPercentage:e.target.value})} required/></label></div>
+        {gradingLoading?<div className="ops-loading">Loading existing grades…</div>:gradingScales.length?<div className="ops-table-wrap"><table className="ops-table"><thead><tr><th>Grade</th><th>Minimum</th><th>Maximum</th><th>Remarks</th></tr></thead><tbody>{gradingScales.map((g)=><tr key={g.id}><td>{g.grade}</td><td>{g.minPercentage}%</td><td>{g.maxPercentage}%</td><td>{g.remarks||'—'}</td></tr>)}</tbody></table></div>:<p className="ops-muted">No grade bands configured for this academic year.</p>}
+        <div className="ops-form-footer"><button type="button" className="ops-button secondary" onClick={()=>setShowGrading(false)}>Close</button><button className="ops-button primary" disabled={saving}>{saving?'Saving…':'Add grading band'}</button></div>
+      </form>
+    </Modal>}
+    {reportPreviewExam&&<Modal title="Examination report card" subtitle={reportPreviewExam.examName+' · '+reportPreviewExam.academicYear} onClose={()=>{setReportPreviewExam(null);setReportCard(null);}}>
+      <form className="ops-form" onSubmit={loadAdminReport}>
+        <label>Student<select value={reportStudentId} onChange={(e)=>setReportStudentId(e.target.value)} required><option value="">Select student</option>{reportStudents.map((s)=><option value={s.id} key={s.id}>{s.admissionNumber} · {s.firstName} {s.lastName}</option>)}</select></label>
+        <div className="ops-form-footer"><button className="ops-button primary" disabled={reportBusy||!reportStudentId}>{reportBusy?'Loading…':'Generate report card'}</button></div>
+      </form>
+      {reportCard&&<div className="ops-card"><div className="result-summary"><div><span>STUDENT</span><b>{reportCard.studentName}</b></div><div><span>PERCENTAGE</span><b>{reportCard.percentage}%</b></div><div><span>GRADE</span><b>{reportCard.grade}</b></div><div><span>RESULT</span><b>{reportCard.passed?'Passed':'Not passed'}</b></div></div><div className="ops-table-wrap"><table className="ops-table"><thead><tr><th>Subject</th><th>Marks</th><th>Maximum</th><th>Pass</th><th>Result</th></tr></thead><tbody>{(reportCard.subjects||[]).map((s)=><tr key={s.examinationSubjectId}><td>{s.subjectName}</td><td>{s.marksObtained}</td><td>{s.maxMarks}</td><td>{s.passMarks}</td><td><Badge value={s.passed?'PASSED':'FAILED'}/></td></tr>)}</tbody></table></div></div>}
+    </Modal>}
     {showCreate&&<Modal title="Create examination" subtitle="Create a draft. You will then configure its subjects before scheduling." onClose={()=>setShowCreate(false)}><form className="ops-form" onSubmit={createExam}>
       <label>Examination name<input value={draft.examName} onChange={(e)=>setDraft({...draft,examName:e.target.value})} maxLength="100" required/></label>
       <label>Section<select value={draft.sectionId} onChange={(e)=>{const s=sections.find((x)=>String(x.id)===e.target.value);setDraft({...draft,sectionId:e.target.value,academicYear:s?.academicYear||draft.academicYear});}} required><option value="">Select section</option>{sections.map((s)=><option key={s.id} value={s.id}>{s.className} · {s.sectionName} · {s.academicYear}</option>)}</select></label>

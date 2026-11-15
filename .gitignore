@@ -1,0 +1,30 @@
+﻿# Environment files and secrets
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+
+# Node
+**/node_modules/
+**/dist/
+**/npm-debug.log*
+
+# Java / Maven
+backend/target/
+**/target/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+.classpath
+.project
+.settings/
+.sts4-cache/
+
+# Logs and OS files
+*.log
+.DS_Store
+Thumbs.db

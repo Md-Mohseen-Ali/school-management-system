@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { apiRequest, decodeJwt, extractToken, readRoles, rowsFrom } from './api.js';
 import { AttendanceWorkspace, ExaminationsWorkspace, FeesWorkspace, AuditWorkspace } from './OperationalWorkspaces.jsx';
+import { AcademicWorkspace } from './AcademicWorkspace.jsx';
 
 const NAV = [
   { id: 'overview', label: 'Overview', group: 'Workspace', icon: '◫', path: null, roles: ['ADMIN', 'TEACHER', 'GUARDIAN', 'STUDENT'] },
@@ -10,6 +11,7 @@ const NAV = [
   { id: 'subjects', label: 'Subjects', group: 'Academic', icon: '▧', path: '/api/v1/academic/subjects', roles: ['ADMIN'] },
   { id: 'enrollments', label: 'Enrollments', group: 'Academic', icon: '⇄', path: '/api/v1/academic/enrollments', roles: ['ADMIN'] },
   { id: 'assignments', label: 'Teacher assignments', group: 'Academic', icon: '▣', path: '/api/v1/academic/teacher-assignments', roles: ['ADMIN'] },
+  { id: 'guardians', label: 'Family links', group: 'Academic', icon: '♧', path: '/api/v1/academic/student-guardians', roles: ['ADMIN'] },
   { id: 'attendance', label: 'Attendance', group: 'Operations', icon: '✓', path: '/api/v1/attendance/sessions', roles: ['ADMIN', 'TEACHER'] },
   { id: 'examinations', label: 'Examinations', group: 'Operations', icon: '✎', path: '/api/v1/examinations', roles: ['ADMIN', 'TEACHER'] },
   { id: 'fees', label: 'Fee invoices', group: 'Finance', icon: '₹', path: '/api/v1/fees/invoices', roles: ['ADMIN', 'GUARDIAN'] },
@@ -24,7 +26,8 @@ const TITLES = {
   sections: ['Sections', 'Organize students into class sections.'],
   subjects: ['Subjects', 'Maintain the school subject catalogue.'],
   enrollments: ['Enrollments', 'Track student placement by academic year.'],
-  assignments: ['Teacher assignments', 'Review class and subject responsibilities.'],
+  assignments: ['Teacher assignments', 'Manage class and subject responsibilities.'],
+  guardians: ['Family links', 'Connect students with their authorized guardians.'],
   attendance: ['Attendance', 'Review attendance sessions and status.'],
   examinations: ['Examinations', 'Manage exams, marks and results.'],
   fees: ['Fee invoices', 'Review invoices, payments and balances.'],
@@ -138,7 +141,7 @@ function Overview({ token, roles, user, setActive }) {
         ['students', '/api/v1/academic/students'], ['classes', '/api/v1/academic/classes'],
         ['sessions', '/api/v1/attendance/sessions'], ['invoices', '/api/v1/fees/invoices'],
       ] : roles.includes('TEACHER') ? [
-        ['sessions', '/api/v1/attendance/sessions'], ['exams', '/api/v1/examinations'],
+        ['sessions', '/api/v1/attendance/sessions'], ['exams', '/api/v1/teacher/examinations'],
       ] : [['invoices', '/api/v1/fees/invoices']];
       const values = await Promise.all(jobs.map(async ([key, path]) => {
         try { return [key, rowsFrom(await apiRequest(path, { token }))]; }
@@ -182,7 +185,7 @@ function Overview({ token, roles, user, setActive }) {
       <section className="panel quick-panel"><div className="panel-heading"><div><div className="eyebrow">QUICK ACCESS</div><h3>Your workspace</h3></div><span className="soft-tag">{friendlyRole(roles)} view</span></div><div className="quick-grid">
         {NAV.filter((x) => x.id !== 'overview' && x.roles.some((r) => roles.includes(r))).slice(0, 6).map((item) => <button key={item.id} className="quick-link" onClick={() => setActive(item.id)}><span>{item.icon}</span><div><b>{item.label}</b><small>Open workspace</small></div><i>↗</i></button>)}
       </div></section>
-      <section className="panel activity-panel"><div className="panel-heading"><div><div className="eyebrow">SYSTEM ACTIVITY</div><h3>Recent audit events</h3></div><span className="soft-tag">Latest 5</span></div>{roles.includes('ADMIN') ? (recent.length ? <div className="activity-list">{recent.map((item, index) => <div className="activity-item" key={item.id || index}><span className="activity-dot" /><div><b>{item.action || item.actionType || 'Business event'}</b><small>{item.entityType || 'Record'} · #{item.entityId ?? '—'}</small></div><time>{item.createdAt ? new Date(item.createdAt).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : 'Logged'}</time></div>)}</div> : <EmptyState compact text={loading ? 'Loading activity…' : 'No audit events could be loaded.'} />) : <div className="quiet-note"><div className="quiet-icon">◷</div><b>Activity is protected</b><p>Administrative audit events are visible to authorized administrators only.</p></div>}</section>
+      <section className="panel activity-panel"><div className="panel-heading"><div><div className="eyebrow">SYSTEM ACTIVITY</div><h3>Recent audit events</h3></div><span className="soft-tag">Latest 5</span></div>{roles.includes('ADMIN') ? (recent.length ? <div className="activity-list">{recent.map((item, index) => <div className="activity-item" key={item.id || index}><span className="activity-dot" /><div><b>{item.action || item.actionType || 'Business event'}</b><small>{item.entityType || 'Record'} · #{item.entityId ?? '—'}</small></div><time>{item.occurredAt ? new Date(item.occurredAt).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : 'Logged'}</time></div>)}</div> : <EmptyState compact text={loading ? 'Loading activity…' : 'No audit events could be loaded.'} />) : <div className="quiet-note"><div className="quiet-icon">◷</div><b>Activity is protected</b><p>Administrative audit events are visible to authorized administrators only.</p></div>}</section>
     </div>
   </>;
 }
@@ -320,7 +323,7 @@ export default function App() {
     <main className="main-area">
       <header className="topbar"><div className="breadcrumb"><span>Workspace</span><b>/</b><strong>{title[0]}</strong></div><div className="topbar-right"><div className="today-chip">◷ <span>Academic year 2026–27</span></div><button className="top-avatar" title="Profile" onClick={() => setActive('profile')}>{initials(profile?.email)}</button></div></header>
       <div className="page-content"><div className="page-heading"><div><div className="eyebrow">NORTHSTAR ACADEMY · MANAGEMENT PORTAL</div><h1>{title[0]}</h1><p>{title[1]}</p></div>{active !== 'overview' && active !== 'profile' && <span className="live-badge"><span/> Connected workspace</span>}</div>
-        {active === 'overview' ? <Overview token={token} roles={menuRoles} user={profile} setActive={setActive}/> : active === 'profile' ? <ProfilePage user={profile} roles={menuRoles} token={token}/> : active === 'reportcard' ? <GuardianReportCard token={token}/> : active === 'attendance' ? <AttendanceWorkspace token={token} roles={menuRoles}/> : active === 'examinations' ? <ExaminationsWorkspace token={token} roles={menuRoles}/> : active === 'fees' ? <FeesWorkspace token={token} roles={menuRoles}/> : active === 'audit' ? <AuditWorkspace token={token}/> : <DataWorkspace key={active} item={effectiveItem} token={token}/>} 
+        {active === 'overview' ? <Overview token={token} roles={menuRoles} user={profile} setActive={setActive}/> : active === 'profile' ? <ProfilePage user={profile} roles={menuRoles} token={token}/> : active === 'reportcard' ? <GuardianReportCard token={token}/> : active === 'attendance' ? <AttendanceWorkspace token={token} roles={menuRoles}/> : active === 'examinations' ? <ExaminationsWorkspace token={token} roles={menuRoles}/> : active === 'fees' ? <FeesWorkspace token={token} roles={menuRoles}/> : active === 'audit' ? <AuditWorkspace token={token}/> : ['students','classes','sections','subjects','enrollments','assignments','guardians'].includes(active) ? <AcademicWorkspace key={active} item={effectiveItem} token={token}/> : <DataWorkspace key={active} item={effectiveItem} token={token}/> 
         <footer className="page-footer"><span>Northstar School Management</span><span>Secure session · Role-based access enforced by backend</span></footer>
       </div>
     </main>

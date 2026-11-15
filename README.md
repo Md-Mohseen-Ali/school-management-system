@@ -54,6 +54,12 @@ Spring Data JPA / Hibernate
 PostgreSQL 17 (Flyway migrations)
 ```
 
+## Technical reference documents
+
+- [Entity Relationship Diagram (ERD)](docs/ERD.md) — tables, relationships and integrity constraints from Flyway migrations.
+- [REST API Reference](docs/API_REFERENCE.md) — role access, routes, request fields and HTTP error conventions.
+- [Requirements and Delivery Tracker](PROJECT_TRACKER.md) — Algions acceptance coverage, role journeys, test evidence and remaining submission deliverables.
+
 ## Repository layout
 
 ```text

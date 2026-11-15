@@ -21,12 +21,11 @@ import com.schoolmanagement.modules.examination.service.ExaminationResultService
 import com.schoolmanagement.modules.identity.entity.GuardianProfile;
 import com.schoolmanagement.modules.identity.repository.GuardianProfileRepository;
 
+@Transactional(readOnly = true)
 @RestController
 @RequestMapping("/api/v1/guardian/examinations")
 @PreAuthorize("hasRole('GUARDIAN')")
 public class GuardianExaminationResultController {
-    @Transactional(readOnly = true)
-
     private final GuardianProfileRepository guardianRepository;
     private final StudentGuardianRepository studentGuardianRepository;
     private final StudentEnrollmentRepository enrollmentRepository;

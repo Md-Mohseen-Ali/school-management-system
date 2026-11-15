@@ -21,12 +21,13 @@ A full-stack school administration application built with Java 17, Spring Boot, 
 
 ## Implemented functionality
 
-- **Academic administration:** students, classes, sections, subjects, teacher and guardian directories, teacher assignments, student enrollments, and student-guardian relationships.
-- **Attendance:** sessions, student attendance records, enrollment-date validation, draft/submitted/locked workflow, duplicate prevention within a session, and student/section attendance reports.
-- **Examinations:** exam scheduling, exam subjects, configurable grading scales, marks validation, completion/publication workflow, and report cards.
-- **Fees:** invoices, invoice line items, payment records, idempotency handling, payment history, and outstanding-balance calculations. Review the configured payment methods against the assessment's simulated-payment-only rule before final submission.
-- **Security:** JWT authentication, BCrypt password hashing, server-side role checks, teacher assignment checks, and guardian-to-student privacy checks.
-- **Audit and errors:** audit events for selected fee operations and standardized JSON error responses, including tested 400, 401 and 403 cases.
+- **Academic administration:** student registration with a linked student login, classes, sections, subjects, enrollment, teacher assignment, guardian relationship management, and administrator-managed teacher/guardian account provisioning.
+- **Attendance:** session creation, enrollment-date validation, duplicate prevention, attendance marking, draft/submitted/locked transitions, class reports, and student/guardian attendance history and summaries.
+- **Examinations:** exam scheduling, subject configuration, configurable grading scales, marks validation, completion/publication workflow, and report cards for administrators, students and linked guardians.
+- **Fees:** itemized invoices, simulated-only payment records, idempotency handling, payment history, guardian payment recording, student read-only invoice/fee summaries, and outstanding-balance reconciliation.
+- **Role-specific workspaces:** dashboards and dedicated screens for administrators, teachers, guardians and students, plus an account profile populated from the authenticated user's server-side identity.
+- **Security:** JWT authentication, BCrypt password hashing, server-side role checks, teacher assignment checks, student self-service ownership checks, and guardian-to-student relationship checks.
+- **Audit and errors:** audit events for tracked identity and fee operations and standardized JSON error responses, including negative/authorization/conflict cases.
 
 ## Architecture
 
@@ -188,6 +189,7 @@ Representative routes:
 | Subjects | `/api/v1/academic/subjects` |
 | Teachers | `GET /api/v1/identity/teachers` |
 | Guardians | `GET /api/v1/identity/guardians` |
+| Provision teacher/guardian account | `POST /api/v1/identity/accounts` (administrator only) |
 | Teacher assignments | `/api/v1/academic/teacher-assignments` |
 | Enrollments | `/api/v1/academic/enrollments` |
 | Student-guardian links | `/api/v1/academic/student-guardians` |
@@ -197,36 +199,35 @@ Representative routes:
 | Teacher assigned sections and roster | `/api/v1/teacher/roster` |
 | Teacher assigned examinations | `/api/v1/teacher/examinations` |
 | Guardian linked students | `GET /api/v1/guardian/students` |
-| Guardian published examinations | `GET /api/v1/guardian/examinations` |
+| Guardian child attendance | `GET /api/v1/guardian/students/{studentId}/attendance/summary`, `GET /api/v1/guardian/students/{studentId}/attendance/history` |
+| Guardian published examinations | `GET /api/v1/guardian/examinations`, `GET /api/v1/guardian/examinations/students/{studentId}` |
+| Student profile | `GET /api/v1/student/profile` |
+| Student attendance summary/history | `GET /api/v1/student/attendance/summary`, `GET /api/v1/student/attendance/history` |
+| Student issued invoices | `GET /api/v1/student/fees/invoices`, `GET /api/v1/student/fees/invoices/{invoiceId}` |
 | Student published examinations | `GET /api/v1/student/examinations` |
 
 The backend also exposes attendance reports, examination marks/report cards, fee invoices and payment-history operations. See the controllers in `backend/src/main/java/com/schoolmanagement/modules/` for request details.
 
 ## Verification commands
 
-Backend compile:
+Backend compile and tests:
 
 ```powershell
 Set-Location .\backend
-.\mvnw.cmd clean compile
-```
-
-Backend tests:
-
-```powershell
-.\mvnw.cmd test
+.\mvnw.cmd clean verify
 ```
 
 Frontend production build:
 
 ```powershell
 Set-Location ..\frontend
+npm ci
 npm run build
 ```
 
-Manual verification performed during development includes administrator login, live admin data views, teacher access restrictions, unauthenticated 401 responses, forbidden 403 responses, attendance session workflow, examination marks/report card calculation, guardian linked-student privacy, fee balance/idempotency checks, and audit-log retrieval.
+The GitHub Actions workflow `.github/workflows/isolated-e2e.yml` starts a disposable PostgreSQL 17 database, applies the actual Flyway migrations and seed data, starts the backend and frontend, then runs attendance, examination, fee, self-service, account-provisioning and Chromium role-workspace checks. The database is destroyed with the runner. Test run links and requirement status are recorded in [PROJECT_TRACKER.md](PROJECT_TRACKER.md).
 
-**Testing limitation:** The current automated test suite is not yet a comprehensive integration suite for all workflows. Do not interpret manual checks as automated test coverage. Run `mvnw.cmd test` on the submitted revision and disclose the actual result.
+Do not treat an earlier test run as proof for a later commit. Use the workflow run associated with the exact commit being submitted. The separate production smoke suite is read-only and checks the deployed Vercel/Render endpoints; it is not a substitute for isolated workflow tests.
 
 ## Security and data handling
 
@@ -239,8 +240,11 @@ Manual verification performed during development includes administrator login, l
 
 - Automated integration tests and negative/conflict tests need further coverage.
 - The new academic and operational UI workflows need production verification with each demo role after deployment. Automated CI builds validate compilation, not every database workflow.
-- Student and guardian report-card views require published examination results and valid current enrollment/guardian relationships.
-- API reference/OpenAPI documentation, ERD and deployment are separate deliverables and should only be marked complete once produced and checked.
+- Student self-service requires a linked AppUser account. New student registration now creates that login as part of the registration transaction; the administrator must communicate the initial password securely.
+- Teacher/guardian account provisioning creates the account/profile, but a teacher still needs section/subject assignment and a guardian still needs student linking before their dashboards have related records.
+- Student fee screens are read-only; guardians or administrators record simulated payments. No real payment processor is connected.
+- No self-service password reset/email delivery is included; temporary credentials are communicated by the school administrator.
+- A consolidated OpenAPI specification, ERD, 3–5 minute walkthrough video and short technical report remain separate submission deliverables. Track their completion in [PROJECT_TRACKER.md](PROJECT_TRACKER.md).
 
 ## Demonstration outline
 

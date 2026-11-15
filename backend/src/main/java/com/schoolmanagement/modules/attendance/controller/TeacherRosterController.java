@@ -26,12 +26,11 @@ import com.schoolmanagement.modules.identity.repository.TeacherProfileRepository
  * directory, this only returns students in a section assigned to the
  * currently authenticated teacher for the requested attendance date.
  */
+@Transactional(readOnly = true)
 @RestController
 @RequestMapping("/api/v1/teacher/roster")
 @PreAuthorize("hasRole('TEACHER')")
 public class TeacherRosterController {
-    @Transactional(readOnly = true)
-
     private final TeacherProfileRepository teacherRepository;
     private final TeacherAssignmentRepository assignmentRepository;
     private final StudentEnrollmentRepository enrollmentRepository;

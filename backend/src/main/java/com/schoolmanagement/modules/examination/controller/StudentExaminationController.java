@@ -22,12 +22,11 @@ import com.schoolmanagement.modules.examination.service.ExaminationResultService
  * Student self-service portal. Student identity is resolved from the JWT
  * principal; callers cannot choose another student ID.
  */
+@Transactional(readOnly = true)
 @RestController
 @RequestMapping("/api/v1/student/examinations")
 @PreAuthorize("hasRole('STUDENT')")
 public class StudentExaminationController {
-    @Transactional(readOnly = true)
-
     private final StudentRepository studentRepository;
     private final StudentEnrollmentRepository enrollmentRepository;
     private final ExaminationRepository examinationRepository;

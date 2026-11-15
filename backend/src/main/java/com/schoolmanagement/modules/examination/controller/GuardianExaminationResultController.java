@@ -102,6 +102,58 @@ public class GuardianExaminationResultController {
                 .toList();
     }
 
+    @GetMapping("/students/{studentId}")
+    public List<ExaminationResponse> getPublishedExaminationsForStudent(
+            @PathVariable Long studentId,
+            Authentication authentication
+    ) {
+        GuardianProfile guardian = guardianRepository
+                .findByUserEmail(authentication.getName())
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.FORBIDDEN,
+                        "Guardian profile not found"
+                ));
+
+        boolean linked = studentGuardianRepository.existsByStudent_IdAndGuardian_Id(
+                studentId, guardian.getId());
+        if (!linked) {
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND,
+                    "Student not found for this guardian");
+        }
+
+        List<Long> sectionIds = enrollmentRepository
+                .findByStudent_IdInAndEndDateIsNull(List.of(studentId))
+                .stream()
+                .map(enrollment -> enrollment.getSection().getId())
+                .distinct()
+                .toList();
+        if (sectionIds.isEmpty()) {
+            return List.of();
+        }
+
+        return examinationRepository
+                .findBySection_IdInAndStatusOrderByStartDateDesc(
+                        sectionIds, ExaminationStatus.PUBLISHED)
+                .stream()
+                .map(exam -> {
+                    var section = exam.getSection();
+                    return new ExaminationResponse(
+                            exam.getId(),
+                            section.getId(),
+                            section.getSectionName(),
+                            section.getSchoolClass().getName(),
+                            exam.getExamName(),
+                            exam.getAcademicYear(),
+                            exam.getStartDate(),
+                            exam.getEndDate(),
+                            exam.getStatus(),
+                            exam.getCreatedAt()
+                    );
+                })
+                .toList();
+    }
+
     @GetMapping("/{examId}/students/{studentId}/report-card")
     public ExaminationReportCardResponse getReportCard(
             @PathVariable Long examId,

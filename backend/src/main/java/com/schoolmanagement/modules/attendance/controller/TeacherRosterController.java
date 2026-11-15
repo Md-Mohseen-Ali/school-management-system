@@ -11,6 +11,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.schoolmanagement.modules.academic.dto.StudentEnrollmentResponse;
 import com.schoolmanagement.modules.academic.entity.StudentEnrollment;
@@ -29,6 +30,7 @@ import com.schoolmanagement.modules.identity.repository.TeacherProfileRepository
 @RequestMapping("/api/v1/teacher/roster")
 @PreAuthorize("hasRole('TEACHER')")
 public class TeacherRosterController {
+    @Transactional(readOnly = true)
 
     private final TeacherProfileRepository teacherRepository;
     private final TeacherAssignmentRepository assignmentRepository;

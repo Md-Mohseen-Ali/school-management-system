@@ -325,27 +325,48 @@ function GuardianReportCard({ token }) {
   const [result, setResult] = useState(null);
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [examsLoading, setExamsLoading] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
     let live = true;
     setLoading(true);
-    Promise.all([
-      apiRequest('/api/v1/guardian/students', { token }),
-      apiRequest('/api/v1/guardian/examinations', { token }),
-    ]).then(([studentData, examData]) => {
-      if (!live) return;
-      const linked = rowsFrom(studentData);
-      const published = rowsFrom(examData);
-      setStudents(linked);
-      setExams(published);
-      setStudentId(linked[0]?.id ? String(linked[0].id) : '');
-      setExamId(published[0]?.id ? String(published[0].id) : '');
-      setError('');
-    }).catch((e) => { if (live) setError(e.message || 'Could not load linked students and published examinations.'); })
+    apiRequest('/api/v1/guardian/students', { token })
+      .then((studentData) => {
+        if (!live) return;
+        const linked = rowsFrom(studentData);
+        setStudents(linked);
+        setStudentId(linked[0]?.id ? String(linked[0].id) : '');
+        setError('');
+      })
+      .catch((e) => { if (live) setError(e.message || 'Could not load linked students.'); })
       .finally(() => { if (live) setLoading(false); });
     return () => { live = false; };
   }, [token]);
+
+  useEffect(() => {
+    if (!studentId) {
+      setExams([]);
+      setExamId('');
+      return;
+    }
+    let live = true;
+    setExamsLoading(true);
+    setExams([]);
+    setExamId('');
+    setResult(null);
+    apiRequest('/api/v1/guardian/examinations/students/' + encodeURIComponent(studentId), { token })
+      .then((data) => {
+        if (!live) return;
+        const published = rowsFrom(data);
+        setExams(published);
+        setExamId(published[0]?.id ? String(published[0].id) : '');
+        setError('');
+      })
+      .catch((e) => { if (live) setError(e.message || 'Could not load published examinations for this student.'); })
+      .finally(() => { if (live) setExamsLoading(false); });
+    return () => { live = false; };
+  }, [studentId, token]);
 
   async function lookup(event) {
     event.preventDefault();
@@ -362,12 +383,16 @@ function GuardianReportCard({ token }) {
 
   return <section className="panel report-lookup">
     <div className="panel-heading"><div><div className="eyebrow">FAMILY ACCESS</div><h3>Linked student report card</h3></div><span className="soft-tag">Guardian only</span></div>
-    <p className="report-intro">Only students linked to your guardian account and examinations with published results are available here.</p>
-    {loading ? <EmptyState compact text="Loading your linked students and published results…"/> : students.length && exams.length ? <form className="lookup-form" onSubmit={lookup}>
-      <label>Student<select value={studentId} onChange={(e) => { setStudentId(e.target.value); setResult(null); }} required>{students.map((student) => <option key={student.id} value={student.id}>{student.admissionNumber} · {student.firstName} {student.lastName}</option>)}</select></label>
-      <label>Published examination<select value={examId} onChange={(e) => { setExamId(e.target.value); setResult(null); }} required>{exams.map((exam) => <option key={exam.id} value={exam.id}>{exam.examName} · {exam.academicYear}</option>)}</select></label>
-      <button className="button primary" disabled={busy}>{busy ? 'Retrieving…' : 'View report card →'}</button>
-    </form> : <EmptyState compact text={students.length ? 'No published examinations are available for your linked students yet.' : 'No students are linked to this guardian account.'}/>}
+    <p className="report-intro">Choose a linked student first. Only examinations published for that student's enrolled sections are offered.</p>
+    {loading ? <EmptyState compact text="Loading your linked students…"/> : students.length ? <>
+      <form className="lookup-form" onSubmit={lookup}>
+        <label>Student<select value={studentId} onChange={(e) => { setStudentId(e.target.value); setResult(null); }} required>{students.map((student) => <option key={student.id} value={student.id}>{student.admissionNumber} · {student.firstName} {student.lastName}</option>)}</select></label>
+        {examsLoading ? <div className="ops-loading">Loading this student's published examinations…</div> : exams.length ? <>
+          <label>Published examination<select value={examId} onChange={(e) => { setExamId(e.target.value); setResult(null); }} required>{exams.map((exam) => <option key={exam.id} value={exam.id}>{exam.examName} · {exam.academicYear} · {exam.className} {exam.sectionName}</option>)}</select></label>
+          <button className="button primary" disabled={busy || !examId}>{busy ? 'Retrieving…' : 'View report card →'}</button>
+        </> : <EmptyState compact text="No published examinations are available for this student yet."/>}
+      </form>
+    </> : <EmptyState compact text="No students are linked to this guardian account."/>}
     {error && <div className="alert error"><b>Report card unavailable</b><span>{error}</span></div>}
     {result && <div className="report-result"><div className="result-summary"><div><span>STUDENT</span><b>{result.studentName || '—'}</b></div><div><span>PERCENTAGE</span><b>{result.percentage ?? '—'}{result.percentage != null ? '%' : ''}</b></div><div><span>GRADE</span><b>{result.grade || '—'}</b></div><div><span>RESULT</span><b>{result.passed ? 'Passed' : 'Not passed'}</b></div></div><div className="ops-table-wrap"><table className="ops-table"><thead><tr><th>Subject</th><th>Marks</th><th>Maximum</th><th>Pass marks</th><th>Result</th></tr></thead><tbody>{(result.subjects || []).map((subject) => <tr key={subject.examinationSubjectId}><td>{subject.subjectName}</td><td>{subject.marksObtained}</td><td>{subject.maxMarks}</td><td>{subject.passMarks}</td><td><span className={'ops-badge ' + (subject.passed ? 'good' : 'warn')}>{subject.passed ? 'Passed' : 'Failed'}</span></td></tr>)}</tbody></table></div></div>}
   </section>;

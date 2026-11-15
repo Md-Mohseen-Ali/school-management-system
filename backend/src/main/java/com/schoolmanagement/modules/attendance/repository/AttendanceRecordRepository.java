@@ -26,6 +26,28 @@ public interface AttendanceRecordRepository
 
     long countByAttendanceSession_Id(Long sessionId);
 
+    @Query("""
+        SELECT r
+        FROM AttendanceRecord r
+        JOIN FETCH r.attendanceSession s
+        JOIN FETCH s.section sec
+        JOIN FETCH sec.schoolClass
+        WHERE r.student.id = :studentId
+          AND s.attendanceDate BETWEEN :fromDate AND :toDate
+          AND s.status IN (
+              com.schoolmanagement.modules.attendance.entity.AttendanceSessionStatus.SUBMITTED,
+              com.schoolmanagement.modules.attendance.entity.AttendanceSessionStatus.LOCKED
+          )
+        ORDER BY s.attendanceDate DESC, r.id DESC
+        """)
+    List<AttendanceRecord> findStudentHistory(
+            @Param("studentId") Long studentId,
+            @Param("fromDate") LocalDate fromDate,
+            @Param("toDate") LocalDate toDate
+    );
+
+
+
     // Student summary across all sections
     @Query("""
         SELECT

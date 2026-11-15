@@ -194,6 +194,11 @@ Representative routes:
 | Attendance sessions | `/api/v1/attendance/sessions` |
 | Examinations | `/api/v1/examinations` |
 | Audit logs | `GET /api/v1/audit-logs` |
+| Teacher assigned sections and roster | `/api/v1/teacher/roster` |
+| Teacher assigned examinations | `/api/v1/teacher/examinations` |
+| Guardian linked students | `GET /api/v1/guardian/students` |
+| Guardian published examinations | `GET /api/v1/guardian/examinations` |
+| Student published examinations | `GET /api/v1/student/examinations` |
 
 The backend also exposes attendance reports, examination marks/report cards, fee invoices and payment-history operations. See the controllers in `backend/src/main/java/com/schoolmanagement/modules/` for request details.
 
@@ -233,8 +238,8 @@ Manual verification performed during development includes administrator login, l
 ## Known limitations / review before submission
 
 - Automated integration tests and negative/conflict tests need further coverage.
-- Admin frontend read views have been checked; verify frontend create/update operations and each role-specific UI before claiming them as fully tested.
-- Confirm payment behavior strictly follows the assignment's simulated-payment-only requirement. The current backend has a cash-payment path that should be reviewed or removed if that requirement is strict.
+- The new academic and operational UI workflows need production verification with each demo role after deployment. Automated CI builds validate compilation, not every database workflow.
+- Student and guardian report-card views require published examination results and valid current enrollment/guardian relationships.
 - API reference/OpenAPI documentation, ERD and deployment are separate deliverables and should only be marked complete once produced and checked.
 
 ## Demonstration outline

@@ -98,6 +98,7 @@ async function hasNoUiError(page,label) {
     assert(!studentNav.some(x=>x.includes("Students")),"Student is shown admin-only student directory");
     await navigate(student.page,"My results");
     const studentExam = student.page.getByLabel("Published examination");
+    await studentExam.locator("option").filter({hasText:"E2E Results"}).first().waitFor({state:"attached",timeout:15000});
     const studentExamId = await studentExam.locator("option").evaluateAll(opts => opts.find(o => o.textContent.includes("E2E Results"))?.value || "");
     assert(studentExamId,"Student UI did not load the published E2E examination");
     await studentExam.selectOption(studentExamId);

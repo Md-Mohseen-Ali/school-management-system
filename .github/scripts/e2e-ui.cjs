@@ -103,6 +103,8 @@ async function hasNoUiError(page,label) {
     await guardianInvoiceRow.getByRole("button",{name:"Payment history"}).click();
     await guardian.page.getByRole("heading",{name:"Payment history"}).waitFor({state:"visible",timeout:15000});
     await hasNoUiError(guardian.page,"Guardian fee workspace");
+    await guardian.page.getByRole("button",{name:"Close"}).click();
+    await guardian.page.getByRole("heading",{name:"Payment history"}).waitFor({state:"hidden",timeout:10000});
     await navigate(guardian.page,"Student attendance");
     await guardian.page.getByLabel("Linked student").waitFor({state:"visible",timeout:15000});
     await guardian.page.getByText(/Attendance history/).waitFor({state:"visible",timeout:15000});

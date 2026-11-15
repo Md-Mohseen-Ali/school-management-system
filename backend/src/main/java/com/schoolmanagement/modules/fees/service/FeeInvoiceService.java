@@ -367,6 +367,52 @@ public class FeeInvoiceService {
         return toResponse(invoice);
     }
 
+
+    @Transactional(readOnly = true)
+    public Page<FeeInvoiceResponse> getStudentInvoices(
+            String authenticatedEmail,
+            String academicYear,
+            Pageable pageable
+    ) {
+        Student student = studentRepository.findByUser_EmailIgnoreCase(authenticatedEmail)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.FORBIDDEN,
+                        "No student profile is linked to this account"
+                ));
+
+        Specification<FeeInvoice> specification = (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            predicates.add(cb.equal(root.get("student").get("id"), student.getId()));
+            predicates.add(cb.equal(root.get("status"), FeeInvoiceStatus.ISSUED));
+            if (academicYear != null && !academicYear.isBlank()) {
+                predicates.add(cb.equal(root.get("academicYear"), academicYear.trim()));
+            }
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+
+        return invoiceRepository.findAll(specification, pageable)
+                .map(this::toResponse);
+    }
+
+    @Transactional(readOnly = true)
+    public FeeInvoiceResponse getStudentInvoice(Long invoiceId, String authenticatedEmail) {
+        Student student = studentRepository.findByUser_EmailIgnoreCase(authenticatedEmail)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.FORBIDDEN,
+                        "No student profile is linked to this account"
+                ));
+
+        FeeInvoice invoice = findInvoice(invoiceId);
+        if (invoice.getStatus() != FeeInvoiceStatus.ISSUED
+                || !invoice.getStudent().getId().equals(student.getId())) {
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND,
+                    "Invoice not found for this student"
+            );
+        }
+        return toResponse(invoice);
+    }
+
     private FeeInvoice findInvoice(Long id) {
 
         return invoiceRepository.findById(id)

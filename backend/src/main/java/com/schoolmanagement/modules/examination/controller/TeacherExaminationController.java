@@ -7,6 +7,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.schoolmanagement.modules.academic.repository.TeacherAssignmentRepository;
 import com.schoolmanagement.modules.examination.dto.ExaminationResponse;
@@ -28,6 +29,7 @@ import com.schoolmanagement.modules.identity.repository.TeacherProfileRepository
 @RequestMapping("/api/v1/teacher/examinations")
 @PreAuthorize("hasRole('TEACHER')")
 public class TeacherExaminationController {
+    @Transactional(readOnly = true)
 
     private final ExaminationRepository examinationRepository;
     private final ExaminationSubjectRepository subjectRepository;

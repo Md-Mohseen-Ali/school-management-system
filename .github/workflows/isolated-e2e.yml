@@ -117,10 +117,15 @@ jobs:
           API_BASE_URL: http://localhost:8080
         run: node .github/scripts/e2e-fees.mjs
 
-      - name: Test role portals and account provisioning
+      - name: Test student, guardian and teacher self-service APIs
         env:
           API_BASE_URL: http://localhost:8080
-        run: node .github/scripts/e2e-portals.mjs
+        run: node .github/scripts/e2e-self-service.mjs
+
+      - name: Test role account provisioning
+        env:
+          API_BASE_URL: http://localhost:8080
+        run: node .github/scripts/e2e-provisioning.mjs
 
       - name: Test browser UI for all four roles
         env:

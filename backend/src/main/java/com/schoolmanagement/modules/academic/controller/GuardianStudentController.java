@@ -18,12 +18,11 @@ import com.schoolmanagement.modules.identity.repository.GuardianProfileRepositor
 /**
  * Returns only students explicitly linked to the authenticated guardian.
  */
+@Transactional(readOnly = true)
 @RestController
 @RequestMapping("/api/v1/guardian/students")
 @PreAuthorize("hasRole('GUARDIAN')")
 public class GuardianStudentController {
-    @Transactional(readOnly = true)
-
     private final GuardianProfileRepository guardianRepository;
     private final StudentGuardianRepository studentGuardianRepository;
 

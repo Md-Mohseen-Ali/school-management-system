@@ -24,7 +24,7 @@ async function navigate(page,label) {
   process.stdout.write("PASS | UI opens " + label + " workspace\n");
 }
 async function hasNoUiError(page,label) {
-  const count = await page.locator(".alert.error").count();
+  const count = await page.locator(".alert.error, .ops-notice.error").count();
   assert.equal(count,0,label+" shows an error alert");
 }
 (async()=>{
@@ -32,7 +32,7 @@ async function hasNoUiError(page,label) {
   try {
     const admin = await signIn(browser,"admin@school.demo","Admin@2026School","Admin");
     const adminNav = await admin.page.locator(".nav-item").allTextContents();
-    for (const item of ["Students","Classes","Sections","Subjects","Enrollments","Teacher assignments","Family links","Attendance","Examinations","Fee invoices","Audit trail"]) {
+    for (const item of ["Students","Classes","Sections","Subjects","Enrollments","Teacher assignments","Family links","People directory","Attendance","Examinations","Fee invoices","Audit trail","My profile"]) {
       assert(adminNav.some(x=>x.includes(item)),"Admin navigation missing "+item);
     }
     for (const label of ["Students","Classes","Sections","Subjects","Enrollments","Teacher assignments","Family links"]) {
@@ -50,8 +50,14 @@ async function hasNoUiError(page,label) {
     await admin.page.locator(".ops-search input").fill("E2E-FEE-");
     await admin.page.locator(".ops-table").getByText(/E2E-FEE-/).first().waitFor({state:"visible",timeout:15000});
     await hasNoUiError(admin.page,"Admin finance workspace");
+    await navigate(admin.page,"People directory");
+    await admin.page.getByRole("tab",{name:/Teachers/}).waitFor({state:"visible",timeout:15000});
+    await hasNoUiError(admin.page,"Admin people directory");
     await navigate(admin.page,"Audit trail");
     await hasNoUiError(admin.page,"Admin audit workspace");
+    await navigate(admin.page,"My profile");
+    await admin.page.getByText("Account details",{exact:true}).waitFor({state:"visible",timeout:15000});
+    await hasNoUiError(admin.page,"Admin account profile");
     await admin.context.close();
     process.stdout.write("PASS | Admin UI navigation and data workspaces\n");
 
@@ -68,6 +74,12 @@ async function hasNoUiError(page,label) {
     await navigate(teacher.page,"Examinations");
     await teacher.page.getByText(/E2E Results/).first().waitFor({state:"visible",timeout:15000});
     await hasNoUiError(teacher.page,"Teacher examination workspace");
+    await navigate(teacher.page,"Class reports");
+    await teacher.page.getByText(/Attendance rate/).first().waitFor({state:"visible",timeout:15000});
+    await hasNoUiError(teacher.page,"Teacher class reports");
+    await navigate(teacher.page,"My profile");
+    await teacher.page.getByText("Teaching assignments",{exact:true}).waitFor({state:"visible",timeout:15000});
+    await hasNoUiError(teacher.page,"Teacher account profile");
     await teacher.context.close();
     process.stdout.write("PASS | Teacher UI navigation and assigned workspaces\n");
 
@@ -90,8 +102,15 @@ async function hasNoUiError(page,label) {
     await guardianInvoiceRow.getByRole("button",{name:"Payment history"}).click();
     await guardian.page.getByRole("heading",{name:"Payment history"}).waitFor({state:"visible",timeout:15000});
     await hasNoUiError(guardian.page,"Guardian fee workspace");
+    await navigate(guardian.page,"Student attendance");
+    await guardian.page.getByLabel("Linked student").waitFor({state:"visible",timeout:15000});
+    await guardian.page.getByText(/Attendance history/).waitFor({state:"visible",timeout:15000});
+    await hasNoUiError(guardian.page,"Guardian student attendance");
+    await navigate(guardian.page,"My profile");
+    await guardian.page.getByText("Linked students",{exact:true}).waitFor({state:"visible",timeout:15000});
+    await hasNoUiError(guardian.page,"Guardian account profile");
     await guardian.context.close();
-    process.stdout.write("PASS | Guardian UI linked report card and fee history\n");
+    process.stdout.write("PASS | Guardian UI linked report card, attendance, fee history and profile\n");
 
     const student = await signIn(browser,"student1@school.demo","Student@2026School","Student");
     const studentNav = await student.page.locator(".nav-item").allTextContents();
@@ -105,8 +124,17 @@ async function hasNoUiError(page,label) {
     await student.page.getByRole("button",{name:/View my report card/}).click();
     await student.page.getByText("PERCENTAGE",{exact:true}).waitFor({state:"visible",timeout:15000});
     await hasNoUiError(student.page,"Student results workspace");
+    await navigate(student.page,"My attendance");
+    await student.page.getByText(/Attendance register/).waitFor({state:"visible",timeout:15000});
+    await hasNoUiError(student.page,"Student attendance workspace");
+    await navigate(student.page,"My fees");
+    await student.page.getByText(/Total billed/).waitFor({state:"visible",timeout:15000});
+    await hasNoUiError(student.page,"Student fees workspace");
+    await navigate(student.page,"My profile");
+    await student.page.getByText("Student details",{exact:true}).waitFor({state:"visible",timeout:15000});
+    await hasNoUiError(student.page,"Student account profile");
     await student.context.close();
-    process.stdout.write("PASS | Student UI personal report card\n");
+    process.stdout.write("PASS | Student UI results, attendance, fees and profile\n");
 
     assert.equal(errors.length,0,"Browser JavaScript errors: "+errors.join(" | "));
     process.stdout.write("PASS | No uncaught browser JavaScript exceptions\n");

@@ -63,7 +63,7 @@ async function hasNoUiError(page,label) {
     await teacher.page.locator(".ops-session-card").first().waitFor({state:"visible",timeout:15000});
     const registerButton = teacher.page.locator(".ops-session-card").first().getByRole("button",{name:/View register|Take attendance/});
     await registerButton.click();
-    await teacher.page.locator(".ops-register").waitFor({state:"visible",timeout:15000});
+    await teacher.page.locator(".ops-stat-row").waitFor({state:"visible",timeout:15000});
     await hasNoUiError(teacher.page,"Teacher attendance register");
     await navigate(teacher.page,"Examinations");
     await teacher.page.getByText(/E2E Results/).first().waitFor({state:"visible",timeout:15000});
@@ -76,7 +76,10 @@ async function hasNoUiError(page,label) {
     assert(!guardianNav.some(x=>x.includes("Students") && !x.includes("Student report cards")),"Guardian is shown admin-only student directory");
     await navigate(guardian.page,"Student report cards");
     await guardian.page.getByLabel("Student").waitFor({state:"visible",timeout:15000});
-    await guardian.page.getByLabel("Published examination").selectOption({label:/E2E Results/});
+    const guardianExam = guardian.page.getByLabel("Published examination");
+    const guardianExamId = await guardianExam.locator("option").evaluateAll(opts => opts.find(o => o.textContent.includes("E2E Results"))?.value || "");
+    assert(guardianExamId,"Guardian UI did not load the published E2E examination");
+    await guardianExam.selectOption(guardianExamId);
     await guardian.page.getByRole("button",{name:/View report card/}).click();
     await guardian.page.getByText("PERCENTAGE",{exact:true}).waitFor({state:"visible",timeout:15000});
     await hasNoUiError(guardian.page,"Guardian report card workspace");
@@ -94,7 +97,10 @@ async function hasNoUiError(page,label) {
     const studentNav = await student.page.locator(".nav-item").allTextContents();
     assert(!studentNav.some(x=>x.includes("Students")),"Student is shown admin-only student directory");
     await navigate(student.page,"My results");
-    await student.page.getByLabel("Published examination").selectOption({label:/E2E Results/});
+    const studentExam = student.page.getByLabel("Published examination");
+    const studentExamId = await studentExam.locator("option").evaluateAll(opts => opts.find(o => o.textContent.includes("E2E Results"))?.value || "");
+    assert(studentExamId,"Student UI did not load the published E2E examination");
+    await studentExam.selectOption(studentExamId);
     await student.page.getByRole("button",{name:/View my report card/}).click();
     await student.page.getByText("PERCENTAGE",{exact:true}).waitFor({state:"visible",timeout:15000});
     await hasNoUiError(student.page,"Student results workspace");

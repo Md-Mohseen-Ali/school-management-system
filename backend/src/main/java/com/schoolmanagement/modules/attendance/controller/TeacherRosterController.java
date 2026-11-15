@@ -2,6 +2,9 @@ package com.schoolmanagement.modules.attendance.controller;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -11,6 +14,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import com.schoolmanagement.modules.academic.dto.StudentEnrollmentResponse;
 import com.schoolmanagement.modules.academic.entity.StudentEnrollment;
+import com.schoolmanagement.modules.academic.entity.TeacherAssignment;
 import com.schoolmanagement.modules.academic.repository.StudentEnrollmentRepository;
 import com.schoolmanagement.modules.academic.repository.TeacherAssignmentRepository;
 import com.schoolmanagement.modules.identity.entity.TeacherProfile;
@@ -38,6 +42,39 @@ public class TeacherRosterController {
         this.teacherRepository = teacherRepository;
         this.assignmentRepository = assignmentRepository;
         this.enrollmentRepository = enrollmentRepository;
+    }
+
+    public record SectionOption(
+            Long id,
+            String sectionName,
+            String className,
+            String academicYear
+    ) {}
+
+    @GetMapping("/sections")
+    public List<SectionOption> getAssignedSections(Authentication authentication) {
+        TeacherProfile teacher = teacherRepository
+                .findActiveByUserEmail(authentication.getName())
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.FORBIDDEN,
+                        "Active teacher profile not found"
+                ));
+
+        Map<Long, SectionOption> unique = new LinkedHashMap<>();
+        for (TeacherAssignment assignment :
+                assignmentRepository.findByTeacher_IdAndActiveTrue(teacher.getId())) {
+            var section = assignment.getSection();
+            unique.putIfAbsent(
+                    section.getId(),
+                    new SectionOption(
+                            section.getId(),
+                            section.getSectionName(),
+                            section.getSchoolClass().getName(),
+                            section.getAcademicYear()
+                    )
+            );
+        }
+        return List.copyOf(unique.values());
     }
 
     @GetMapping

@@ -144,8 +144,10 @@ function Overview({ token, roles, user, setActive }) {
         ['sessions', '/api/v1/attendance/sessions'], ['exams', '/api/v1/teacher/examinations'],
       ] : [['invoices', '/api/v1/fees/invoices']];
       const values = await Promise.all(jobs.map(async ([key, path]) => {
-        try { return [key, rowsFrom(await apiRequest(path, { token }))]; }
-        catch { return [key, null]; }
+        try {
+          const response = await apiRequest(path + (path.includes('?') ? '&' : '?') + 'size=1', { token });
+          return [key, { count: response?.totalElements ?? rowsFrom(response).length }];
+        } catch { return [key, null]; }
       }));
       let audit = [];
       if (admin) {
@@ -167,7 +169,7 @@ function Overview({ token, roles, user, setActive }) {
     return () => { cancelled = true; };
   }, [token, roles]);
 
-  const count = (key) => stats[key] == null ? '—' : stats[key].length;
+  const count = (key) => stats[key] == null ? '—' : stats[key].count;
   const cards = roles.includes('ADMIN') ? [
     ['Students', count('students'), 'Active school directory', '♙', 'violet'],
     ['Classes', count('classes'), 'Academic structure', '▦', 'blue'],
@@ -291,7 +293,7 @@ function GuardianReportCard({ token }) {
       <button className="button primary" disabled={busy}>{busy ? 'Retrieving…' : 'View report card →'}</button>
     </form> : <EmptyState compact text={students.length ? 'No published examinations are available for your linked students yet.' : 'No students are linked to this guardian account.'}/>}
     {error && <div className="alert error"><b>Report card unavailable</b><span>{error}</span></div>}
-    {result && <div className="report-result"><div className="result-summary"><div><span>STUDENT</span><b>{result.studentName || '—'}</b></div><div><span>PERCENTAGE</span><b>{result.percentage ?? '—'}{result.percentage != null ? '%' : ''}</b></div><div><span>GRADE</span><b>{result.grade || '—'}</b></div><div><span>RESULT</span><b>{result.passed ? 'Passed' : 'Not passed'}</b></div></div><div className="ops-table-wrap"><table className="ops-table"><thead><tr><th>Subject</th><th>Marks</th><th>Maximum</th><th>Pass marks</th><th>Result</th></tr></thead><tbody>{(result.subjects || []).map((subject) => <tr key={subject.examinationSubjectId}><td>{subject.subjectName}</td><td>{subject.marksObtained}</td><td>{subject.maxMarks}</td><td>{subject.passMarks}</td><td><Badge value={subject.passed ? 'PASSED' : 'FAILED'}/></td></tr>)}</tbody></table></div></div>}
+    {result && <div className="report-result"><div className="result-summary"><div><span>STUDENT</span><b>{result.studentName || '—'}</b></div><div><span>PERCENTAGE</span><b>{result.percentage ?? '—'}{result.percentage != null ? '%' : ''}</b></div><div><span>GRADE</span><b>{result.grade || '—'}</b></div><div><span>RESULT</span><b>{result.passed ? 'Passed' : 'Not passed'}</b></div></div><div className="ops-table-wrap"><table className="ops-table"><thead><tr><th>Subject</th><th>Marks</th><th>Maximum</th><th>Pass marks</th><th>Result</th></tr></thead><tbody>{(result.subjects || []).map((subject) => <tr key={subject.examinationSubjectId}><td>{subject.subjectName}</td><td>{subject.marksObtained}</td><td>{subject.maxMarks}</td><td>{subject.passMarks}</td><td><span className={'ops-badge ' + (subject.passed ? 'good' : 'warn')}>{subject.passed ? 'Passed' : 'Failed'}</span></td></tr>)}</tbody></table></div></div>}
   </section>;
 }
 
@@ -346,7 +348,7 @@ export default function App() {
     <main className="main-area">
       <header className="topbar"><div className="breadcrumb"><span>Workspace</span><b>/</b><strong>{title[0]}</strong></div><div className="topbar-right"><div className="today-chip">◷ <span>Academic year 2026–27</span></div><button className="top-avatar" title="Profile" onClick={() => setActive('profile')}>{initials(profile?.email)}</button></div></header>
       <div className="page-content"><div className="page-heading"><div><div className="eyebrow">NORTHSTAR ACADEMY · MANAGEMENT PORTAL</div><h1>{title[0]}</h1><p>{title[1]}</p></div>{active !== 'overview' && active !== 'profile' && <span className="live-badge"><span/> Connected workspace</span>}</div>
-        {active === 'overview' ? <Overview token={token} roles={menuRoles} user={profile} setActive={setActive}/> : active === 'profile' ? <ProfilePage user={profile} roles={menuRoles} token={token}/> : active === 'reportcard' ? <GuardianReportCard token={token}/> : active === 'attendance' ? <AttendanceWorkspace token={token} roles={menuRoles}/> : active === 'examinations' ? <ExaminationsWorkspace token={token} roles={menuRoles}/> : active === 'fees' ? <FeesWorkspace token={token} roles={menuRoles}/> : active === 'audit' ? <AuditWorkspace token={token}/> : ['students','classes','sections','subjects','enrollments','assignments','guardians'].includes(active) ? <AcademicWorkspace key={active} item={effectiveItem} token={token}/> : <DataWorkspace key={active} item={effectiveItem} token={token}/> 
+        {active === 'overview' ? <Overview token={token} roles={menuRoles} user={profile} setActive={setActive}/> : active === 'profile' ? <ProfilePage user={profile} roles={menuRoles} token={token}/> : active === 'reportcard' ? <GuardianReportCard token={token}/> : active === 'attendance' ? <AttendanceWorkspace token={token} roles={menuRoles}/> : active === 'examinations' ? <ExaminationsWorkspace token={token} roles={menuRoles}/> : active === 'fees' ? <FeesWorkspace token={token} roles={menuRoles}/> : active === 'audit' ? <AuditWorkspace token={token}/> : ['students','classes','sections','subjects','enrollments','assignments','guardians'].includes(active) ? <AcademicWorkspace key={active} item={effectiveItem} token={token}/> : <DataWorkspace key={active} item={effectiveItem} token={token}/>} 
         <footer className="page-footer"><span>Northstar School Management</span><span>Secure session · Role-based access enforced by backend</span></footer>
       </div>
     </main>

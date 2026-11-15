@@ -85,6 +85,15 @@ public class FeePaymentService {
             verifyGuardianAccess(invoice, authenticatedEmail);
         }
 
+        // The assessment environment never collects or records real-money
+        // payments. This rule applies to every role, including administrators.
+        if (request.paymentMethod() != PaymentMethod.SIMULATED) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Only simulated payments are supported"
+            );
+        }
+
         String idempotencyKey = request.idempotencyKey().trim();
 
         // A retry with the same key returns the original payment.
@@ -114,20 +123,6 @@ public class FeePaymentService {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
                     "Payments can only be made against issued invoices"
-            );
-        }
-
-        if (!admin && request.paymentMethod() != PaymentMethod.SIMULATED) {
-            throw new ResponseStatusException(
-                    HttpStatus.FORBIDDEN,
-                    "Guardians can only use simulated payments"
-            );
-        }
-
-        if (admin && request.paymentMethod() != PaymentMethod.CASH) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Administrators must record payments using CASH method"
             );
         }
 

@@ -16,6 +16,8 @@ public interface StudentEnrollmentRepository extends
         JpaSpecificationExecutor<StudentEnrollment> {
 
     boolean existsByStudent_IdAndEndDateIsNull(Long studentId);
+
+    java.util.List<StudentEnrollment> findByStudent_IdInAndEndDateIsNull(java.util.List<Long> studentIds);
     
     @Query("""
     	    SELECT CASE WHEN COUNT(e) > 0 THEN TRUE ELSE FALSE END

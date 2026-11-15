@@ -19,6 +19,11 @@ public interface ExaminationRepository extends
             String examName,
             String academicYear
     );
+
+    java.util.List<Examination> findBySection_IdInAndStatusOrderByStartDateDesc(
+            java.util.List<Long> sectionIds,
+            com.schoolmanagement.modules.examination.entity.ExaminationStatus status
+    );
     
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""

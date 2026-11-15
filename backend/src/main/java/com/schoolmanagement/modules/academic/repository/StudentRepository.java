@@ -10,4 +10,6 @@ public interface StudentRepository extends
         JpaSpecificationExecutor<Student> {
 
     boolean existsByAdmissionNumberIgnoreCase(String admissionNumber);
+
+    java.util.Optional<Student> findByUser_EmailIgnoreCase(String email);
 }

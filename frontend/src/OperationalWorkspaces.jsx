@@ -556,6 +556,262 @@ export function FeesWorkspace({ token, roles = [] }) {
   </section>;
 }
 
+
+const dateDaysAgo = (days) => {
+  const value = new Date();
+  value.setDate(value.getDate() - days);
+  return new Date(value.getTime() - value.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+};
+
+function AttendanceSummaryCards({ summary }) {
+  if (!summary) return null;
+  return <div className="ops-stat-row ops-stat-row-wide">
+    <div className="ops-stat"><b>{summary.attendancePercentage ?? 0}%</b><span>Attendance rate</span></div>
+    <div className="ops-stat"><b>{summary.presentCount ?? 0}</b><span>Present</span></div>
+    <div className="ops-stat"><b>{summary.absentCount ?? 0}</b><span>Absent</span></div>
+    <div className="ops-stat"><b>{summary.lateCount ?? 0}</b><span>Late</span></div>
+    <div className="ops-stat"><b>{summary.totalRecords ?? 0}</b><span>Recorded sessions</span></div>
+  </div>;
+}
+
+function AttendanceHistoryTable({ rows, emptyTitle = 'No attendance records in this period' }) {
+  return rows.length ? <div className="ops-table-wrap"><table className="ops-table">
+    <thead><tr><th>Date</th><th>Class</th><th>Section</th><th>Session</th><th>Attendance</th><th>Notes</th></tr></thead>
+    <tbody>{rows.map((record) => <tr key={record.attendanceRecordId}>
+      <td>{record.attendanceDate}</td>
+      <td>{record.className}</td>
+      <td>{record.sectionName}</td>
+      <td>{pretty(record.sessionCode)}</td>
+      <td><Badge value={record.attendanceStatus}/></td>
+      <td>{record.remarks || '—'}</td>
+    </tr>)}</tbody>
+  </table></div> : <Empty title={emptyTitle} description="Attendance appears here after a teacher submits the class register." />;
+}
+
+export function StudentAttendanceWorkspace({ token }) {
+  const [fromDate, setFromDate] = useState(() => dateDaysAgo(90));
+  const [toDate, setToDate] = useState(today());
+  const [summary, setSummary] = useState(null);
+  const [history, setHistory] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [applied, setApplied] = useState({ fromDate: dateDaysAgo(90), toDate: today() });
+
+  const load = useCallback(async () => {
+    setLoading(true); setError('');
+    try {
+      const query = '?fromDate=' + encodeURIComponent(applied.fromDate) + '&toDate=' + encodeURIComponent(applied.toDate);
+      const [summaryData, historyData] = await Promise.all([
+        apiRequest('/api/v1/student/attendance/summary' + query, { token }),
+        apiRequest('/api/v1/student/attendance/history' + query, { token })
+      ]);
+      setSummary(summaryData);
+      setHistory(rowsFrom(historyData));
+    } catch (e) { setError(messageFrom(e)); setSummary(null); setHistory([]); }
+    finally { setLoading(false); }
+  }, [token, applied]);
+  useEffect(() => { load(); }, [load]);
+
+  function applyRange(e) {
+    e.preventDefault();
+    if (toDate < fromDate) { setError('End date cannot be earlier than start date.'); return; }
+    setApplied({ fromDate, toDate });
+  }
+
+  return <section className="ops-workspace">
+    <SectionTitle eyebrow="STUDENT LIFE" title="My attendance" description="Track your attendance rate and review submitted class registers." action={<button className="ops-button secondary" onClick={load} disabled={loading}>↻ Refresh</button>}/>
+    <form className="ops-filter-panel" onSubmit={applyRange}>
+      <label>From date<input type="date" value={fromDate} max={toDate} onChange={e=>setFromDate(e.target.value)}/></label>
+      <label>To date<input type="date" value={toDate} min={fromDate} max={today()} onChange={e=>setToDate(e.target.value)}/></label>
+      <button className="ops-button primary" disabled={loading}>Apply period</button>
+      <span className="ops-muted">Showing {applied.fromDate} to {applied.toDate}</span>
+    </form>
+    {error && <Notice type="error">{error}</Notice>}
+    {loading ? <div className="ops-loading">Loading your attendance…</div> : <>
+      <AttendanceSummaryCards summary={summary}/>
+      <div className="ops-panel-heading"><div><span className="eyebrow">ATTENDANCE REGISTER</span><h3>Recent records</h3></div><span className="ops-count">{history.length} records</span></div>
+      <AttendanceHistoryTable rows={history}/>
+    </>}
+  </section>;
+}
+
+export function StudentFeesWorkspace({ token }) {
+  const [invoices, setInvoices] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [query, setQuery] = useState('');
+  const [selected, setSelected] = useState(null);
+
+  const load = useCallback(async () => {
+    setLoading(true); setError('');
+    try {
+      setInvoices(rowsFrom(await apiRequest('/api/v1/student/fees/invoices?page=0&size=100', { token })));
+    } catch (e) { setError(messageFrom(e)); setInvoices([]); }
+    finally { setLoading(false); }
+  }, [token]);
+  useEffect(() => { load(); }, [load]);
+
+  const filtered = invoices.filter(invoice => JSON.stringify(invoice).toLowerCase().includes(query.toLowerCase()));
+  const totalDue = invoices.reduce((sum, invoice) => sum + Number(invoice.balance || 0), 0);
+  const totalPaid = invoices.reduce((sum, invoice) => sum + Number(invoice.amountPaid || 0), 0);
+  const totalBilled = invoices.reduce((sum, invoice) => sum + Number(invoice.totalAmount || 0), 0);
+
+  return <section className="ops-workspace">
+    <SectionTitle eyebrow="STUDENT FINANCE" title="My fee summary" description="Review issued invoices, payments received and the remaining balance. Payments are handled by your guardian." action={<button className="ops-button secondary" onClick={load} disabled={loading}>↻ Refresh</button>}/>
+    {error && <Notice type="error">{error}</Notice>}
+    {loading ? <div className="ops-loading">Loading your fee ledger…</div> : <>
+      <div className="ops-stat-row ops-stat-row-wide">
+        <div className="ops-stat"><b>{money(totalBilled)}</b><span>Total billed</span></div>
+        <div className="ops-stat"><b>{money(totalPaid)}</b><span>Paid</span></div>
+        <div className="ops-stat"><b>{money(totalDue)}</b><span>Outstanding</span></div>
+        <div className="ops-stat"><b>{invoices.length}</b><span>Issued invoices</span></div>
+      </div>
+      <div className="ops-toolbar"><label className="ops-search"><span>⌕</span><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search invoices…"/></label><span className="ops-count">{filtered.length} invoices</span></div>
+      {filtered.length ? <div className="ops-table-wrap"><table className="ops-table">
+        <thead><tr><th>Invoice</th><th>Academic year</th><th>Issued</th><th>Due date</th><th>Total</th><th>Paid</th><th>Balance</th><th>Status</th><th>Details</th></tr></thead>
+        <tbody>{filtered.map(invoice=><tr key={invoice.id}>
+          <td><b>{invoice.invoiceNumber}</b><small>#{invoice.id}</small></td>
+          <td>{invoice.academicYear}</td><td>{invoice.issueDate}</td><td>{invoice.dueDate}</td>
+          <td>{money(invoice.totalAmount)}</td><td>{money(invoice.amountPaid)}</td><td><b>{money(invoice.balance)}</b></td>
+          <td><Badge value={invoice.status}/></td><td><button className="ops-text-button" onClick={()=>setSelected(invoice)}>View items</button></td>
+        </tr>)}</tbody>
+      </table></div> : <Empty title="No fee invoices yet" description="Issued school invoices will appear here when they are assigned to your student record."/>}
+      <div className="ops-info-strip"><span>ⓘ</span><p>This is a read-only student view. Your guardian or the school office handles simulated payment recording.</p></div>
+    </>}
+    {selected && <Modal title={selected.invoiceNumber} subtitle={'Issued fee invoice · ' + selected.academicYear} onClose={()=>setSelected(null)}>
+      <div className="ops-invoice-detail">
+        {(selected.items||[]).map(item=><div className="ops-invoice-line" key={item.id}><span>{item.description}</span><b>{money(item.amount)}</b></div>)}
+        <div className="ops-invoice-total"><span>Invoice total</span><b>{money(selected.totalAmount)}</b></div>
+        <div className="ops-invoice-total"><span>Amount paid</span><b>{money(selected.amountPaid)}</b></div>
+        <div className="ops-invoice-total balance"><span>Outstanding balance</span><b>{money(selected.balance)}</b></div>
+      </div>
+    </Modal>}
+  </section>;
+}
+
+export function GuardianAttendanceWorkspace({ token }) {
+  const [students, setStudents] = useState([]);
+  const [studentId, setStudentId] = useState('');
+  const [fromDate, setFromDate] = useState(() => dateDaysAgo(90));
+  const [toDate, setToDate] = useState(today());
+  const [summary, setSummary] = useState(null);
+  const [history, setHistory] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [studentsLoading, setStudentsLoading] = useState(true);
+
+  useEffect(() => {
+    let alive = true;
+    apiRequest('/api/v1/guardian/students', { token })
+      .then(data => {
+        if (!alive) return;
+        const linked = rowsFrom(data);
+        setStudents(linked);
+        setStudentId(linked[0]?.id ? String(linked[0].id) : '');
+      })
+      .catch(e => { if (alive) setError(messageFrom(e)); })
+      .finally(() => { if (alive) setStudentsLoading(false); });
+    return () => { alive = false; };
+  }, [token]);
+
+  const load = useCallback(async () => {
+    if (!studentId) { setLoading(false); setSummary(null); setHistory([]); return; }
+    setLoading(true); setError('');
+    const query = '?fromDate=' + encodeURIComponent(fromDate) + '&toDate=' + encodeURIComponent(toDate);
+    try {
+      const [summaryData, historyData] = await Promise.all([
+        apiRequest('/api/v1/guardian/students/' + encodeURIComponent(studentId) + '/attendance/summary' + query, { token }),
+        apiRequest('/api/v1/guardian/students/' + encodeURIComponent(studentId) + '/attendance/history' + query, { token })
+      ]);
+      setSummary(summaryData);
+      setHistory(rowsFrom(historyData));
+    } catch (e) { setError(messageFrom(e)); setSummary(null); setHistory([]); }
+    finally { setLoading(false); }
+  }, [token, studentId, fromDate, toDate]);
+  useEffect(() => { if (!studentsLoading) load(); }, [studentsLoading, load]);
+
+  return <section className="ops-workspace">
+    <SectionTitle eyebrow="FAMILY ACCESS" title="Student attendance" description="Review attendance summaries and submitted registers for students linked to your guardian account." action={<button className="ops-button secondary" onClick={load} disabled={loading || studentsLoading}>↻ Refresh</button>}/>
+    {studentsLoading ? <div className="ops-loading">Loading linked students…</div> : students.length ? <>
+      <div className="ops-filter-panel">
+        <label>Linked student<select value={studentId} onChange={e=>setStudentId(e.target.value)}>{students.map(s=><option value={s.id} key={s.id}>{s.admissionNumber} · {s.firstName} {s.lastName}</option>)}</select></label>
+        <label>From date<input type="date" value={fromDate} max={toDate} onChange={e=>setFromDate(e.target.value)}/></label>
+        <label>To date<input type="date" value={toDate} min={fromDate} max={today()} onChange={e=>setToDate(e.target.value)}/></label>
+      </div>
+      {error && <Notice type="error">{error}</Notice>}
+      {loading ? <div className="ops-loading">Loading attendance report…</div> : <>
+        <AttendanceSummaryCards summary={summary}/>
+        <div className="ops-panel-heading"><div><span className="eyebrow">CLASS REGISTERS</span><h3>Attendance history</h3></div><span className="ops-count">{history.length} records</span></div>
+        <AttendanceHistoryTable rows={history}/>
+      </>}
+    </> : <Empty title="No linked students" description="A school administrator must connect a student to this guardian account before family information is displayed."/>}
+  </section>;
+}
+
+export function TeacherClassReportsWorkspace({ token }) {
+  const [sections, setSections] = useState([]);
+  const [sectionId, setSectionId] = useState('');
+  const [fromDate, setFromDate] = useState(() => dateDaysAgo(90));
+  const [toDate, setToDate] = useState(today());
+  const [report, setReport] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let alive = true;
+    apiRequest('/api/v1/teacher/roster/sections', { token })
+      .then(data => {
+        if (!alive) return;
+        const assigned = rowsFrom(data);
+        setSections(assigned);
+        setSectionId(assigned[0]?.id ? String(assigned[0].id) : '');
+      })
+      .catch(e => { if (alive) setError(messageFrom(e)); })
+      .finally(() => { if (alive) setLoading(false); });
+    return () => { alive = false; };
+  }, [token]);
+
+  const load = useCallback(async () => {
+    if (!sectionId) { setReport(null); return; }
+    setLoading(true); setError('');
+    try {
+      const query = '?fromDate=' + encodeURIComponent(fromDate) + '&toDate=' + encodeURIComponent(toDate);
+      setReport(await apiRequest('/api/v1/attendance/reports/sections/' + encodeURIComponent(sectionId) + query, { token }));
+    } catch (e) { setError(messageFrom(e)); setReport(null); }
+    finally { setLoading(false); }
+  }, [token, sectionId, fromDate, toDate]);
+  useEffect(() => { if (sectionId) load(); }, [sectionId, load]);
+
+  return <section className="ops-workspace">
+    <SectionTitle eyebrow="TEACHING INSIGHTS" title="Class reports" description="Monitor attendance across only the sections assigned to your teacher account." action={<button className="ops-button secondary" onClick={load} disabled={loading || !sectionId}>↻ Refresh</button>}/>
+    {error && <Notice type="error">{error}</Notice>}
+    <div className="ops-filter-panel">
+      <label>Assigned section<select value={sectionId} onChange={e=>setSectionId(e.target.value)} disabled={!sections.length}>
+        {sections.map(s=><option key={s.id} value={s.id}>{s.className} · {s.sectionName} · {s.academicYear}</option>)}
+      </select></label>
+      <label>From date<input type="date" value={fromDate} max={toDate} onChange={e=>setFromDate(e.target.value)}/></label>
+      <label>To date<input type="date" value={toDate} min={fromDate} max={today()} onChange={e=>setToDate(e.target.value)}/></label>
+      <button className="ops-button primary" onClick={load} disabled={loading || !sectionId}>Run report</button>
+    </div>
+    {loading ? <div className="ops-loading">Loading class report…</div> : report ? <>
+      <div className="ops-stat-row ops-stat-row-wide">
+        <div className="ops-stat"><b>{report.attendancePercentage ?? 0}%</b><span>Attendance rate</span></div>
+        <div className="ops-stat"><b>{report.totalStudents ?? 0}</b><span>Students</span></div>
+        <div className="ops-stat"><b>{report.totalSessions ?? 0}</b><span>Finalized sessions</span></div>
+        <div className="ops-stat"><b>{report.presentCount ?? 0}</b><span>Present</span></div>
+        <div className="ops-stat"><b>{report.absentCount ?? 0}</b><span>Absent</span></div>
+      </div>
+      <div className="ops-table-wrap"><table className="ops-table">
+        <thead><tr><th>Student</th><th>Records</th><th>Present</th><th>Absent</th><th>Late</th><th>Excused</th><th>Attendance</th></tr></thead>
+        <tbody>{(report.students||[]).map(s=><tr key={s.studentId}>
+          <td><b>{s.studentName}</b><small>{s.admissionNumber}</small></td>
+          <td>{s.totalRecords}</td><td>{s.presentCount}</td><td>{s.absentCount}</td><td>{s.lateCount}</td><td>{s.excusedCount}</td><td><b>{s.attendancePercentage}%</b></td>
+        </tr>)}</tbody>
+      </table></div>
+    </> : <Empty title="No report available" description={sections.length ? 'Choose an assigned section and date range to generate its attendance report.' : 'No active section assignments are available for this teacher account.'}/>}
+  </section>;
+}
+
 export function AuditWorkspace({ token }) {
   const [events,setEvents]=useState([]);const [loading,setLoading]=useState(true);const [error,setError]=useState('');const [query,setQuery]=useState('');
   const load=useCallback(async()=>{setLoading(true);setError('');try{setEvents(rowsFrom(await apiRequest('/api/v1/audit-logs',{token})));}catch(e){setError(messageFrom(e));}finally{setLoading(false);}},[token]);

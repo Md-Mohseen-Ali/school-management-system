@@ -53,6 +53,22 @@ public interface ExaminationRepository extends
             @Param("status") ExaminationStatus status
     );
 
+    @Query("""
+        SELECT DISTINCT e
+        FROM Examination e
+        WHERE EXISTS (
+            SELECT es.id
+            FROM ExaminationSubject es, com.schoolmanagement.modules.academic.entity.TeacherAssignment assignment
+            WHERE es.examination = e
+              AND assignment.section = e.section
+              AND assignment.subject = es.subject
+              AND assignment.teacher.id = :teacherId
+              AND assignment.active = TRUE
+        )
+        ORDER BY e.startDate DESC
+        """)
+    List<Examination> findExaminationsForTeacher(@Param("teacherId") Long teacherId);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
         SELECT e

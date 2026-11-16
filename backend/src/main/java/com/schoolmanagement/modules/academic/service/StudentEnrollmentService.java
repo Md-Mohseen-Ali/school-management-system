@@ -7,6 +7,9 @@ import java.util.List;
 
 import jakarta.persistence.criteria.Predicate;
 
+import java.util.Map;
+import com.schoolmanagement.common.audit.AuditService;
+
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -34,15 +37,18 @@ public class StudentEnrollmentService {
     private final StudentEnrollmentRepository enrollmentRepository;
     private final StudentRepository studentRepository;
     private final SectionRepository sectionRepository;
+    private final AuditService auditService;
 
     public StudentEnrollmentService(
             StudentEnrollmentRepository enrollmentRepository,
             StudentRepository studentRepository,
-            SectionRepository sectionRepository
+            SectionRepository sectionRepository,
+            AuditService auditService
     ) {
         this.enrollmentRepository = enrollmentRepository;
         this.studentRepository = studentRepository;
         this.sectionRepository = sectionRepository;
+        this.auditService = auditService;
     }
 
     @Transactional
@@ -91,6 +97,11 @@ public class StudentEnrollmentService {
         try {
             StudentEnrollment saved =
                     enrollmentRepository.saveAndFlush(enrollment);
+            auditService.record("STUDENT_ENROLLMENT_CREATED", "STUDENT_ENROLLMENT",
+                    saved.getId().toString(), null,
+                    Map.of("studentId", student.getId(),
+                            "sectionId", section.getId(),
+                            "startDate", saved.getStartDate()));
 
             return toResponse(saved);
 
@@ -186,8 +197,15 @@ public class StudentEnrollmentService {
         }
 
         enrollment.setEndDate(endDate);
+        StudentEnrollment saved = enrollmentRepository.save(enrollment);
+        auditService.record("STUDENT_ENROLLMENT_ENDED", "STUDENT_ENROLLMENT",
+                saved.getId().toString(),
+                Map.of("studentId", saved.getStudent().getId(),
+                        "sectionId", saved.getSection().getId(),
+                        "startDate", saved.getStartDate()),
+                Map.of("endDate", saved.getEndDate()));
 
-        return toResponse(enrollmentRepository.save(enrollment));
+        return toResponse(saved);
     }
 
     private StudentEnrollment findEnrollment(Long id) {

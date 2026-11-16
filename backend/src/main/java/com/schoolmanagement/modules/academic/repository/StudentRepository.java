@@ -11,5 +11,7 @@ public interface StudentRepository extends
 
     boolean existsByAdmissionNumberIgnoreCase(String admissionNumber);
 
+    java.util.Optional<Student> findByAdmissionNumberIgnoreCase(String admissionNumber);
+
     java.util.Optional<Student> findByUser_EmailIgnoreCase(String email);
 }

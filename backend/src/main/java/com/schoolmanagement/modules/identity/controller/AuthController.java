@@ -109,6 +109,7 @@ public class AuthController {
         response.put("phone", user.getPhone());
         response.put("roles", roles);
         response.put("enabled", user.isEnabled());
+        response.put("createdAt", user.getCreatedAt());
         response.put("authenticated", authentication.isAuthenticated());
         response.put("profile", buildRoleProfile(user, roles));
         return response;
@@ -145,6 +146,8 @@ public class AuthController {
                             item.put("className", assignment.getSection().getSchoolClass().getName());
                             item.put("academicYear", assignment.getSection().getAcademicYear());
                             item.put("subjectName", assignment.getSubject().getName());
+                            item.put("subjectCode", assignment.getSubject().getSubjectCode());
+                            item.put("assignedOn", assignment.getAssignedOn());
                             return item;
                         }).toList());
             });
@@ -162,12 +165,24 @@ public class AuthController {
                             item.put("studentName", student.getFirstName() + " " + student.getLastName());
                             item.put("relationship", link.getRelationship());
                             item.put("primary", link.isPrimaryGuardian());
+                            item.put("studentStatus", student.getStatus().name());
+                            enrollmentRepository.findFirstByStudent_IdAndEndDateIsNullOrderByStartDateDesc(student.getId())
+                                    .ifPresent(enrollment -> {
+                                        item.put("className", enrollment.getSection().getSchoolClass().getName());
+                                        item.put("sectionName", enrollment.getSection().getSectionName());
+                                        item.put("academicYear", enrollment.getSection().getAcademicYear());
+                                    });
                             return item;
                         }).toList());
             });
         } else if (roles.contains("ROLE_ADMIN")) {
             profile.put("type", "ADMIN");
             profile.put("title", "School administrator");
+            profile.put("administrativeScope", "School-wide");
+            profile.put("managementAreas", List.of(
+                    "People and access", "Academic administration", "Attendance",
+                    "Examinations and grading", "Fees and payments", "Audit trail"
+            ));
         } else {
             profile.put("type", "ACCOUNT");
         }

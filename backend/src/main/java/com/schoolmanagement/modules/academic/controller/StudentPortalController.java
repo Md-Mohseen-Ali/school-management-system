@@ -14,6 +14,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import com.schoolmanagement.modules.academic.dto.StudentPortalProfileResponse;
+import com.schoolmanagement.modules.academic.dto.StudentAcademicOverviewResponse;
+import com.schoolmanagement.modules.academic.repository.TeacherAssignmentRepository;
 import com.schoolmanagement.modules.academic.entity.Student;
 import com.schoolmanagement.modules.academic.entity.StudentEnrollment;
 import com.schoolmanagement.modules.academic.repository.StudentEnrollmentRepository;
@@ -38,6 +40,7 @@ public class StudentPortalController {
 
     private final StudentRepository studentRepository;
     private final StudentEnrollmentRepository enrollmentRepository;
+    private final TeacherAssignmentRepository teacherAssignmentRepository;
     private final AttendanceReportService attendanceReportService;
     private final AttendanceRecordRepository attendanceRecordRepository;
     private final FeeInvoiceService feeInvoiceService;
@@ -46,12 +49,14 @@ public class StudentPortalController {
     public StudentPortalController(
             StudentRepository studentRepository,
             StudentEnrollmentRepository enrollmentRepository,
+            TeacherAssignmentRepository teacherAssignmentRepository,
             AttendanceReportService attendanceReportService,
             AttendanceRecordRepository attendanceRecordRepository,
             FeeInvoiceService feeInvoiceService,
             FeePaymentService feePaymentService) {
         this.studentRepository = studentRepository;
         this.enrollmentRepository = enrollmentRepository;
+        this.teacherAssignmentRepository = teacherAssignmentRepository;
         this.attendanceReportService = attendanceReportService;
         this.attendanceRecordRepository = attendanceRecordRepository;
         this.feeInvoiceService = feeInvoiceService;
@@ -82,6 +87,23 @@ public class StudentPortalController {
                 enrollment == null ? null : enrollment.getSection().getAcademicYear(),
                 enrollment == null ? null : enrollment.getStartDate()
         );
+    }
+
+    @GetMapping("/academics")
+    @Transactional(readOnly = true)
+    public StudentAcademicOverviewResponse getMyAcademics(Authentication authentication) {
+        Student student = findStudent(authentication.getName());
+        StudentEnrollment enrollment = enrollmentRepository
+                .findFirstByStudent_IdAndEndDateIsNullOrderByStartDateDesc(student.getId())
+                .orElse(null);
+
+        List<com.schoolmanagement.modules.academic.dto.StudentSubjectTeacherResponse> subjects =
+                enrollment == null
+                        ? List.of()
+                        : teacherAssignmentRepository.findStudentSubjectsAndTeachers(
+                                enrollment.getSection().getId());
+
+        return new StudentAcademicOverviewResponse(getProfile(authentication), subjects);
     }
 
     @GetMapping("/attendance/summary")

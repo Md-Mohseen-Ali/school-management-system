@@ -52,7 +52,7 @@ All routes in this section are ADMIN-only.
 | GET, POST | /academic/subjects | List and create subjects |
 | GET, PUT | /academic/subjects/{id} | View and update a subject |
 | PATCH | /academic/subjects/{id}/status | Activate/deactivate a subject |
-| GET, POST | /academic/enrollments | List and create student enrollments |
+| GET, POST | /academic/enrollments | List and create student enrollments; GET supports `studentId`, `sectionId`, `active` and `attendanceDate` filters |
 | GET | /academic/enrollments/{id} | View enrollment detail |
 | PATCH | /academic/enrollments/{id}/end | End an enrollment |
 | GET, POST | /academic/teacher-assignments | List/create teacher section-subject assignments |
@@ -137,7 +137,7 @@ Exam creation fields: sectionId, examName, academicYear (YYYY-YYYY), startDate a
 
 Marks cannot exceed maximum; marks cannot be negative; absent students must receive zero marks. Completion requires continuous grade-scale coverage between 0 and 100 and mark coverage for all students enrolled on each subject date.
 
-Grading-scale fields: academicYear, grade, minPercentage, maxPercentage and optional remarks.
+Student and guardian published-exam lists are based on enrollment at each configured subject examination date, not only current active enrollment. Historical report cards therefore remain discoverable after a student transfers or leaves the section.\n\nGrading-scale fields: academicYear, grade, minPercentage, maxPercentage and optional remarks.
 
 ## Fees and payments
 

@@ -73,6 +73,27 @@ try {
       asset.status === 200 && assetText.includes("My academics") ? "Student UI marker found" : "Student UI marker missing");
     record("Vercel bundle includes public account request screen", asset.status === 200 && assetText.includes("Request an account"),
       asset.status === 200 && assetText.includes("Request an account") ? "Public request UI marker found" : "Public request UI marker missing");
+    const previewOrigin = "https://algions-school-management-git-f-60837a-md-mohseen-alis-projects.vercel.app";
+    const preview = await fetch(previewOrigin + "/", { signal: AbortSignal.timeout(20000) });
+    const previewHtml = await preview.text();
+    const previewScriptTag = previewHtml.split("<script").slice(1).map(part => "<script" + part.slice(0, part.indexOf(">") + 1)).find(tag => tag.includes("src="));
+    const previewScriptMatch = previewScriptTag?.match(/src=["']([^"']+)["']/);
+    record("Vercel feature preview page", preview.status === 200 && Boolean(previewScriptMatch),
+      "HTTP " + preview.status);
+    if (preview.status === 200 && previewScriptMatch) {
+      const previewAsset = await fetch(new URL(previewScriptMatch[1], previewOrigin), { signal: AbortSignal.timeout(20000) });
+      const previewText = await previewAsset.text();
+      record("Vercel feature preview includes Access requests UI", previewAsset.status === 200 && previewText.includes("Access requests"),
+        "HTTP " + previewAsset.status + (previewText.includes("Access requests") ? ", marker found" : ", marker missing"));
+      record("Vercel feature preview includes My academics UI", previewAsset.status === 200 && previewText.includes("My academics"),
+        "HTTP " + previewAsset.status + (previewText.includes("My academics") ? ", marker found" : ", marker missing"));
+      record("Vercel feature preview includes public account request UI", previewAsset.status === 200 && previewText.includes("Request an account"),
+        "HTTP " + previewAsset.status + (previewText.includes("Request an account") ? ", marker found" : ", marker missing"));
+    } else {
+      record("Vercel feature preview includes Access requests UI", false, "preview bundle not accessible");
+      record("Vercel feature preview includes My academics UI", false, "preview bundle not accessible");
+      record("Vercel feature preview includes public account request UI", false, "preview bundle not accessible");
+    }
   } else {
     record("Vercel production bundle loads", false, "could not locate frontend JS bundle");
     record("Frontend bundle targets deployed Render API", false, "could not inspect frontend JS bundle");

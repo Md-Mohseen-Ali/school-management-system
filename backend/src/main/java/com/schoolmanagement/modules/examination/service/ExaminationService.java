@@ -3,6 +3,9 @@ package com.schoolmanagement.modules.examination.service;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+
+import com.schoolmanagement.common.audit.AuditService;
 
 import jakarta.persistence.criteria.Predicate;
 
@@ -37,17 +40,20 @@ public class ExaminationService {
     private final ExaminationSubjectRepository examinationSubjectRepository;
     private final SectionRepository sectionRepository;
     private final SubjectRepository subjectRepository;
+    private final AuditService auditService;
 
     public ExaminationService(
             ExaminationRepository examinationRepository,
             ExaminationSubjectRepository examinationSubjectRepository,
             SectionRepository sectionRepository,
-            SubjectRepository subjectRepository
+            SubjectRepository subjectRepository,
+            AuditService auditService
     ) {
         this.examinationRepository = examinationRepository;
         this.examinationSubjectRepository = examinationSubjectRepository;
         this.sectionRepository = sectionRepository;
         this.subjectRepository = subjectRepository;
+        this.auditService = auditService;
     }
 
     // CREATE EXAMINATION
@@ -97,9 +103,13 @@ public class ExaminationService {
         );
 
         try {
-            return toExaminationResponse(
-                    examinationRepository.saveAndFlush(examination)
-            );
+            Examination saved = examinationRepository.saveAndFlush(examination);
+            auditService.record("EXAMINATION_CREATED", "EXAMINATION", saved.getId().toString(),
+                    null, Map.of("sectionId", section.getId(),
+                            "examName", saved.getExamName(),
+                            "academicYear", saved.getAcademicYear(),
+                            "status", saved.getStatus().name()));
+            return toExaminationResponse(saved);
         } catch (DataIntegrityViolationException exception) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
@@ -223,11 +233,15 @@ public class ExaminationService {
         );
 
         try {
-            return toSubjectResponse(
-                    examinationSubjectRepository.saveAndFlush(
-                            examinationSubject
-                    )
-            );
+            ExaminationSubject saved = examinationSubjectRepository.saveAndFlush(examinationSubject);
+            auditService.record("EXAMINATION_SUBJECT_CONFIGURED", "EXAMINATION_SUBJECT",
+                    saved.getId().toString(), null,
+                    Map.of("examinationId", examination.getId(),
+                            "subjectId", subject.getId(),
+                            "examinationDate", saved.getExaminationDate(),
+                            "maxMarks", saved.getMaxMarks(),
+                            "passMarks", saved.getPassMarks()));
+            return toSubjectResponse(saved);
         } catch (DataIntegrityViolationException exception) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
@@ -274,10 +288,11 @@ public class ExaminationService {
         }
 
         examination.setStatus(ExaminationStatus.SCHEDULED);
-
-        return toExaminationResponse(
-                examinationRepository.save(examination)
-        );
+        Examination saved = examinationRepository.save(examination);
+        auditService.record("EXAMINATION_SCHEDULED", "EXAMINATION", saved.getId().toString(),
+                Map.of("status", ExaminationStatus.DRAFT.name()),
+                Map.of("status", saved.getStatus().name()));
+        return toExaminationResponse(saved);
     }
 
     // PRIVATE HELPERS

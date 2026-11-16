@@ -40,7 +40,7 @@ async function run() {
   const historicalStudent = await expect("Admin creates historical-roster test student",
     await api(admin,"/api/v1/academic/students","POST",{
       admissionNumber:"E2E-HISTORY-"+tag,firstName:"Historical",lastName:"Student",
-      admissionDate:date,email:"history-"+tag+"@example.com",
+      admissionDate:historicalDate,email:"history-"+tag+"@example.com",
       initialPassword:"History@2026School"
     }),201);
   const historicalEnrollment = await expect("Admin enrolls student before historical register date",
@@ -105,6 +105,16 @@ async function run() {
     await api(teacher,"/api/v1/attendance/sessions?sectionId="+section.id+"&attendanceDate="+date),200);
   check("New session appears in teacher's session list",
     rows(sessions).some(x=>String(x.id)===String(session.id)));
+  const auditEvents = rows(await expect("Admin reads attendance audit events",
+    await api(admin,"/api/v1/audit-logs?page=0&size=100&sort=occurredAt,desc"),200));
+  const sessionAuditActions = auditEvents
+    .filter(x=>String(x.entityId)===String(session.id))
+    .map(x=>x.action);
+  check("Audit trail records attendance create, mark, submit and lock",
+    ["ATTENDANCE_SESSION_CREATED","ATTENDANCE_RECORDS_SAVED",
+     "ATTENDANCE_SESSION_SUBMITTED","ATTENDANCE_SESSION_LOCKED"]
+      .every(action=>sessionAuditActions.includes(action)),
+    sessionAuditActions.join(", "));
   process.stdout.write("RETAINED ATTENDANCE TEST DATA: "+JSON.stringify(created)+"\n");
 }
 run().catch(e=>check("Attendance E2E runner exception",false,e && e.message ? e.message : String(e))).finally(report);

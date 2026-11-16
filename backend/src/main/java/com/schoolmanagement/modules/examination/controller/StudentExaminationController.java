@@ -10,7 +10,6 @@ import org.springframework.web.server.ResponseStatusException;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.schoolmanagement.modules.academic.entity.Student;
-import com.schoolmanagement.modules.academic.repository.StudentEnrollmentRepository;
 import com.schoolmanagement.modules.academic.repository.StudentRepository;
 import com.schoolmanagement.modules.examination.dto.ExaminationReportCardResponse;
 import com.schoolmanagement.modules.examination.dto.ExaminationResponse;
@@ -28,18 +27,15 @@ import com.schoolmanagement.modules.examination.service.ExaminationResultService
 @PreAuthorize("hasRole('STUDENT')")
 public class StudentExaminationController {
     private final StudentRepository studentRepository;
-    private final StudentEnrollmentRepository enrollmentRepository;
     private final ExaminationRepository examinationRepository;
     private final ExaminationResultService resultService;
 
     public StudentExaminationController(
             StudentRepository studentRepository,
-            StudentEnrollmentRepository enrollmentRepository,
             ExaminationRepository examinationRepository,
             ExaminationResultService resultService
     ) {
         this.studentRepository = studentRepository;
-        this.enrollmentRepository = enrollmentRepository;
         this.examinationRepository = examinationRepository;
         this.resultService = resultService;
     }
@@ -50,22 +46,10 @@ public class StudentExaminationController {
     ) {
         Student student = getStudent(authentication.getName());
 
-        List<Long> sectionIds = enrollmentRepository
-                .findByStudent_IdInAndEndDateIsNull(List.of(student.getId()))
-                .stream()
-                .map(enrollment -> enrollment.getSection().getId())
-                .distinct()
-                .toList();
-
-        if (sectionIds.isEmpty()) {
-            return List.of();
-        }
-
-        return examinationRepository
-                .findBySection_IdInAndStatusOrderByStartDateDesc(
-                        sectionIds,
-                        ExaminationStatus.PUBLISHED
-                )
+        return examinationRepository.findPublishedForStudents(
+                List.of(student.getId()),
+                ExaminationStatus.PUBLISHED
+        )
                 .stream()
                 .map(exam -> {
                     var section = exam.getSection();

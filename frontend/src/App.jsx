@@ -3,6 +3,8 @@ import { apiRequest, decodeJwt, extractToken, readRoles, rowsFrom } from './api.
 import { AttendanceWorkspace, ExaminationsWorkspace, FeesWorkspace, AuditWorkspace, StudentResultsWorkspace, StudentAttendanceWorkspace, StudentFeesWorkspace, GuardianAttendanceWorkspace, TeacherClassReportsWorkspace } from './OperationalWorkspaces.jsx';
 import { AcademicWorkspace } from './AcademicWorkspace.jsx';
 import { PeopleWorkspace } from './PeopleWorkspace.jsx';
+import { PublicAccountRequest, AccountRequestsWorkspace } from './AccountRequestsWorkspace.jsx';
+import { StudentAcademicWorkspace } from './StudentAcademicWorkspace.jsx';
 
 const NAV = [
   { id: 'overview', label: 'Overview', group: 'Workspace', icon: '◫', path: null, roles: ['ADMIN', 'TEACHER', 'GUARDIAN', 'STUDENT'] },
@@ -14,12 +16,14 @@ const NAV = [
   { id: 'assignments', label: 'Teacher assignments', group: 'Academic', icon: '▣', path: '/api/v1/academic/teacher-assignments', roles: ['ADMIN'] },
   { id: 'guardians', label: 'Family links', group: 'Academic', icon: '♧', path: '/api/v1/academic/student-guardians', roles: ['ADMIN'] },
   { id: 'people', label: 'People directory', group: 'Academic', icon: '♙', path: '/api/v1/identity/teachers', roles: ['ADMIN'] },
+  { id: 'accessrequests', label: 'Access requests', group: 'Access', icon: '✉', path: '/api/v1/account-requests', roles: ['ADMIN'] },
   { id: 'attendance', label: 'Attendance', group: 'Operations', icon: '✓', path: '/api/v1/attendance/sessions', roles: ['ADMIN', 'TEACHER'] },
   { id: 'examinations', label: 'Examinations', group: 'Operations', icon: '✎', path: '/api/v1/examinations', roles: ['ADMIN', 'TEACHER'] },
   { id: 'classreports', label: 'Class reports', group: 'Operations', icon: '▥', path: '/api/v1/attendance/reports/sections', roles: ['TEACHER'] },
   { id: 'fees', label: 'Fee invoices', group: 'Finance', icon: '₹', path: '/api/v1/fees/invoices', roles: ['ADMIN', 'GUARDIAN'] },
   { id: 'reportcard', label: 'Student report cards', group: 'Family', icon: '▤', path: null, roles: ['GUARDIAN'] },
   { id: 'familyattendance', label: 'Student attendance', group: 'Family', icon: '✓', path: '/api/v1/guardian/students', roles: ['GUARDIAN'] },
+  { id: 'academics', label: 'My academics', group: 'Learning', icon: '▦', path: '/api/v1/student/academics', roles: ['STUDENT'] },
   { id: 'myattendance', label: 'My attendance', group: 'Learning', icon: '✓', path: '/api/v1/student/attendance/summary', roles: ['STUDENT'] },
   { id: 'myfees', label: 'My fees', group: 'Learning', icon: '₹', path: '/api/v1/student/fees/invoices', roles: ['STUDENT'] },
   { id: 'myresults', label: 'My results', group: 'Learning', icon: '▤', path: '/api/v1/student/examinations', roles: ['STUDENT'] },
@@ -37,6 +41,7 @@ const TITLES = {
   assignments: ['Teacher assignments', 'Manage class and subject responsibilities.'],
   guardians: ['Family links', 'Connect students with their authorized guardians.'],
   people: ['People directory', 'Create and review teacher and guardian accounts.'],
+  accessrequests: ['Access requests', 'Verify and decide pending teacher, guardian and student portal requests.'],
   attendance: ['Attendance', 'Review attendance sessions and status.'],
   examinations: ['Examinations', 'Manage exams, marks and results.'],
   classreports: ['Class reports', 'Review attendance trends for your assigned sections.'],
@@ -44,6 +49,7 @@ const TITLES = {
   audit: ['Audit trail', 'Trace important administrative actions.'],
   reportcard: ['Student report cards', 'View examination results for students linked to your account.'],
   familyattendance: ['Student attendance', 'Review attendance for students linked to your guardian account.'],
+  academics: ['My academics', 'See your current class, section, enrolled subjects and assigned teachers.'],
   myattendance: ['My attendance', 'Track your attendance rate and review class registers.'],
   myfees: ['My fees', 'Review your issued invoices and outstanding balance.'],
   myresults: ['My results', 'View your own published examination results.'],
@@ -70,6 +76,7 @@ function Login({ onLogin }) {
   const [password, setPassword] = useState('Admin@2026School');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [requestAccess, setRequestAccess] = useState(false);
 
   async function submit(event) {
     event.preventDefault();
@@ -88,6 +95,8 @@ function Login({ onLogin }) {
       setBusy(false);
     }
   }
+
+  if (requestAccess) return <PublicAccountRequest onBack={() => setRequestAccess(false)} />;
 
   return (
     <main className="login-screen">
@@ -114,6 +123,7 @@ function Login({ onLogin }) {
             <button className="button primary full" disabled={busy}>{busy ? 'Signing in…' : 'Sign in'} <span>→</span></button>
           </form>
           <details className="demo-accounts"><summary>Demo account credentials</summary><div className="demo-list">{DEMO_LOGINS.map((item) => <button type="button" key={item.role} onClick={() => { setEmail(item.email); setPassword(item.password); }}><b>{item.role}</b><span>{item.email}</span></button>)}</div><small>Dummy records only. Use these accounts for assessment demonstration.</small></details>
+          <div className="request-access-prompt"><span>Do not have a school portal account?</span><button type="button" onClick={() => setRequestAccess(true)}>Request account access</button></div>
         </div>
       </section>
     </main>
@@ -434,8 +444,8 @@ function ProfilePage({ user, roles, token }) {
           {field('Full name',profile?.fullName)}
           {field('Email address',profile?.email)}
           {field('Phone number',profile?.phone)}
-          {field('Account ID',profile?.id)}
           {field('Role',roleLabel)}
+          {field('Account created',profile?.createdAt ? new Date(profile.createdAt).toLocaleString('en-IN') : null)}
           {field('Account status',profile?.enabled === false ? 'Disabled' : 'Active')}
         </div>
       </section>
@@ -451,6 +461,7 @@ function ProfilePage({ user, roles, token }) {
           {field('Section',details.sectionName)}
           {field('Academic year',details.academicYear)}
           {field('Enrollment start',details.enrollmentStartDate)}
+          {field('Account created',profile?.createdAt ? new Date(profile.createdAt).toLocaleDateString('en-IN') : null)}
         </div>
       </section>}
 
@@ -462,18 +473,19 @@ function ProfilePage({ user, roles, token }) {
           {field('Teacher status',details.active === false ? 'Inactive' : 'Active')}
           {field('Assigned sections',(details.assignedSections||[]).length)}
         </div>
-        {(details.assignedSections||[]).length > 0 && <div className="profile-assignment-list">{details.assignedSections.map((item,index)=><div key={item.sectionId+'-'+item.subjectName+'-'+index}><b>{item.className} · {item.sectionName}</b><span>{item.subjectName} · {item.academicYear}</span></div>)}</div>}
+        {(details.assignedSections||[]).length > 0 && <div className="profile-assignment-list">{details.assignedSections.map((item,index)=><div key={item.sectionId+'-'+item.subjectName+'-'+index}><b>{item.className} · {item.sectionName}</b><span>{item.subjectCode ? item.subjectCode+' · ' : ''}{item.subjectName} · {item.academicYear}{item.assignedOn ? ' · Since '+item.assignedOn : ''}</span></div>)}</div>}
       </section>}
 
       {details.type === 'GUARDIAN' && <section className="profile-section">
         <div className="profile-section-heading"><div><span className="eyebrow">FAMILY IDENTITY</span><h3>Linked students</h3></div><span className="profile-readonly">Guardian portal</span></div>
         <div className="profile-details-grid">{field('Guardian ID',details.guardianId)}{field('Alternate phone',details.alternatePhone)}{field('Linked students',(details.linkedStudents||[]).length)}</div>
-        {(details.linkedStudents||[]).length > 0 ? <div className="profile-linked-list">{details.linkedStudents.map(student=><div key={student.studentId}><div className="profile-linked-avatar">{initials(student.studentName)}</div><div><b>{student.studentName}</b><span>{student.admissionNumber} · {student.relationship}{student.primary?' · Primary contact':''}</span></div></div>)}</div> : <div className="profile-empty">No students are currently linked to this guardian account.</div>}
+        {(details.linkedStudents||[]).length > 0 ? <div className="profile-linked-list">{details.linkedStudents.map(student=><div key={student.studentId}><div className="profile-linked-avatar">{initials(student.studentName)}</div><div><b>{student.studentName}</b><span>{student.admissionNumber} · {student.relationship}{student.primary?' · Primary contact':''}{student.className?' · '+student.className+' '+(student.sectionName||''):''}{student.studentStatus?' · '+student.studentStatus:''}</span></div></div>)}</div> : <div className="profile-empty">No students are currently linked to this guardian account.</div>}
       </section>}
 
       {details.type === 'ADMIN' && <section className="profile-section">
         <div className="profile-section-heading"><div><span className="eyebrow">ADMINISTRATIVE ACCESS</span><h3>School administration</h3></div><span className="profile-readonly">Admin portal</span></div>
-        <p className="profile-helper">This account can manage academic records, people, operational workflows, fee invoices and the audit trail. Changes are enforced by backend authorization.</p>
+        <p className="profile-helper">This account has school-wide administrative access. Server-side authorization controls which records and operations this account can manage.</p>
+        <div className="profile-linked-list">{(details.managementAreas||[]).map(area=><div key={area}><div className="profile-linked-avatar">✓</div><div><b>{area}</b><span>Administrator workspace</span></div></div>)}</div>
       </section>}
 
       <section className="profile-security-note"><span>◈</span><div><b>Account security</b><p>Your session uses a signed bearer token. The profile page never displays passwords, token values or raw API responses. For corrections to account information, contact the school administrator.</p></div></section>
@@ -525,7 +537,7 @@ export default function App() {
     <main className="main-area">
       <header className="topbar"><div className="breadcrumb"><span>Workspace</span><b>/</b><strong>{title[0]}</strong></div><div className="topbar-right"><div className="today-chip">◷ <span>Academic year 2026–27</span></div><button className="top-avatar" title="Profile" onClick={() => setActive('profile')}>{initials(profile?.email)}</button></div></header>
       <div className="page-content"><div className="page-heading"><div><div className="eyebrow">NORTHSTAR ACADEMY · MANAGEMENT PORTAL</div><h1>{title[0]}</h1><p>{title[1]}</p></div>{active !== 'overview' && active !== 'profile' && <span className="live-badge"><span/> Connected workspace</span>}</div>
-        {active === 'overview' ? <Overview token={token} roles={menuRoles} user={profile} setActive={setActive}/> : active === 'profile' ? <ProfilePage user={profile} roles={menuRoles} token={token}/> : active === 'reportcard' ? <GuardianReportCard token={token}/> : active === 'familyattendance' ? <GuardianAttendanceWorkspace token={token}/> : active === 'myattendance' ? <StudentAttendanceWorkspace token={token}/> : active === 'myfees' ? <StudentFeesWorkspace token={token}/> : active === 'myresults' ? <StudentResultsWorkspace token={token}/> : active === 'classreports' ? <TeacherClassReportsWorkspace token={token}/> : active === 'attendance' ? <AttendanceWorkspace token={token} roles={menuRoles}/> : active === 'examinations' ? <ExaminationsWorkspace token={token} roles={menuRoles}/> : active === 'fees' ? <FeesWorkspace token={token} roles={menuRoles}/> : active === 'people' ? <PeopleWorkspace token={token}/> : active === 'audit' ? <AuditWorkspace token={token}/> : ['students','classes','sections','subjects','enrollments','assignments','guardians'].includes(active) ? <AcademicWorkspace key={active} item={effectiveItem} token={token}/> : <DataWorkspace key={active} item={effectiveItem} token={token}/>} 
+        {active === 'overview' ? <Overview token={token} roles={menuRoles} user={profile} setActive={setActive}/> : active === 'profile' ? <ProfilePage user={profile} roles={menuRoles} token={token}/> : active === 'academics' ? <StudentAcademicWorkspace token={token} onNavigate={setActive}/> : active === 'accessrequests' ? <AccountRequestsWorkspace token={token}/> : active === 'reportcard' ? <GuardianReportCard token={token}/> : active === 'familyattendance' ? <GuardianAttendanceWorkspace token={token}/> : active === 'myattendance' ? <StudentAttendanceWorkspace token={token}/> : active === 'myfees' ? <StudentFeesWorkspace token={token}/> : active === 'myresults' ? <StudentResultsWorkspace token={token}/> : active === 'classreports' ? <TeacherClassReportsWorkspace token={token}/> : active === 'attendance' ? <AttendanceWorkspace token={token} roles={menuRoles}/> : active === 'examinations' ? <ExaminationsWorkspace token={token} roles={menuRoles}/> : active === 'fees' ? <FeesWorkspace token={token} roles={menuRoles}/> : active === 'people' ? <PeopleWorkspace token={token}/> : active === 'audit' ? <AuditWorkspace token={token}/> : ['students','classes','sections','subjects','enrollments','assignments','guardians'].includes(active) ? <AcademicWorkspace key={active} item={effectiveItem} token={token}/> : <DataWorkspace key={active} item={effectiveItem} token={token}/>} 
         <footer className="page-footer"><span>Northstar School Management</span><span>Secure session · Role-based access enforced by backend</span></footer>
       </div>
     </main>

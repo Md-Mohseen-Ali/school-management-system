@@ -172,6 +172,20 @@ async function run() {
   await expect("Unlinked guardian is denied report-card access",
     await api(guardian2,"/api/v1/guardian/examinations/"+exam.id+"/students/"+student.id+"/report-card"),404);
 
+  const auditEvents = rows(await expect("Admin reads examination audit events",
+    await api(admin,"/api/v1/audit-logs?page=0&size=100&sort=occurredAt,desc"),200));
+  const examAuditActions = auditEvents
+    .filter(x=>String(x.entityId)===String(exam.id))
+    .map(x=>x.action);
+  check("Audit trail records examination creation, scheduling, completion and publication",
+    ["EXAMINATION_CREATED","EXAMINATION_SCHEDULED",
+     "EXAMINATION_COMPLETED","EXAMINATION_PUBLISHED"]
+      .every(action=>examAuditActions.includes(action)),
+    examAuditActions.join(", "));
+  check("Audit trail records marks submitted for the configured subject",
+    auditEvents.some(x=>x.action==="EXAMINATION_MARKS_SAVED" &&
+      String(x.entityId)===String(examSubject.id)));
+
   process.stdout.write("RETAINED EXAMINATION TEST DATA: "+JSON.stringify(retained)+"\n");
 }
 run().catch(e=>check("Examination E2E runner exception",false,e && e.message ? e.message : String(e))).finally(report);

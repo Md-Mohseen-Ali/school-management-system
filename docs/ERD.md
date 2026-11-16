@@ -1,6 +1,6 @@
 # School Management System — Entity Relationship Diagram
 
-This diagram is based on Flyway migrations V1–V4 in the backend migration directory. It describes the current PostgreSQL relational model.
+This diagram is based on Flyway migrations V1–V4 in the backend migration directory. It describes the current PostgreSQL relational model. Migration V6 aligns the `fee_invoices.status` database default with the existing DRAFT-first application lifecycle; it does not change the ERD structure.
 
 ## Logical data model
 

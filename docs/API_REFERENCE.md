@@ -17,7 +17,11 @@ This reference follows the current Spring controller mappings. For exact field c
 |---|---|---|---|
 | POST | /auth/login | Public | Authenticate using email and password; returns access token, token type and expiry |
 | GET | /auth/me | Any authenticated role | Current account identity and role-specific profile |
-| POST | /identity/accounts | ADMIN | Create TEACHER or GUARDIAN account and role profile |
+| POST | /account-requests | Public | Submit a TEACHER, GUARDIAN or STUDENT access request; creates no login |
+| GET | /account-requests | ADMIN | List access requests; optional `status=PENDING`, `APPROVED` or `REJECTED` |
+| POST | /account-requests/{requestId}/approve | ADMIN | Verify and provision a requested account using an administrator-supplied initial password |
+| POST | /account-requests/{requestId}/reject | ADMIN | Reject a pending request with a reason |
+| POST | /identity/accounts | ADMIN | Directly create TEACHER or GUARDIAN account and role profile |
 | GET | /identity/teachers | ADMIN | List active teachers and profile/contact details |
 | GET | /identity/guardians | ADMIN | List guardians and profile/contact details |
 
@@ -35,7 +39,15 @@ Teacher account request example:
 }
 \`\`\`
 
-For a guardian account, set role to GUARDIAN and use optional alternatePhone instead of employeeCode/hireDate. Passwords are BCrypt hashed and never returned. The administrator must communicate initial credentials securely; no email delivery or self-service password-reset workflow is implemented.
+For a guardian account, set role to GUARDIAN and use optional alternatePhone instead of employeeCode/hireDate.
+
+### Public account-access request
+
+The public form accepts `requestedRole` values `TEACHER`, `GUARDIAN` or `STUDENT`, plus identity/contact fields relevant to that role. A teacher request requires `employeeCode`; a guardian request requires `studentAdmissionNumber` and `relationship`; a student request requires `admissionNumber`, `firstName` and `lastName`. All requests require `fullName` and `email`. No password is collected or stored in the request.
+
+A public submission returns a request reference and `PENDING` status. It does not create an app_user, student, teacher or guardian identity. An administrator reviews the request in **Access requests** and either rejects it with a reason or approves it with an initial password (12–72 characters). Approval runs account/profile creation and any guardian-to-student link in the same transaction. Guardian approval fails unless the admission number resolves to an existing student. Student approval creates the new student admission and login; the administrator must still create the class/section enrollment. Teacher approval creates staff identity; section/subject assignment remains an administrative step.
+
+Approved passwords are BCrypt hashed and never returned. The administrator must communicate initial credentials securely. Email delivery, public request-status lookup, self-service password reset and automatic email invitation are not implemented.
 
 ## Academic administration
 
@@ -81,6 +93,7 @@ Common list filters include search, status, classId, academicYear, sectionId, st
 | GET | /attendance/reports/sections/{sectionId} | ADMIN, assigned TEACHER | Class attendance summary |
 | GET | /teacher/roster/sections | TEACHER | Active assigned section options |
 | GET | /teacher/roster?sectionId=&attendanceDate= | TEACHER (assigned section) | Students enrolled on the requested date |
+| GET | /student/academics | STUDENT | Own current enrollment, active subjects and assigned teacher contacts |
 | GET | /student/attendance/summary | STUDENT | Own attendance summary |
 | GET | /student/attendance/history | STUDENT | Own submitted/locked attendance history |
 | GET | /guardian/students/{studentId}/attendance/summary | Linked GUARDIAN | Linked student's attendance summary |
@@ -155,7 +168,7 @@ Student and guardian published-exam lists are based on enrollment at each config
 
 Invoice request fields: invoiceNumber, studentId, academicYear, issueDate and dueDate. Invoice item fields: description and amount. Payment request fields: amount, paymentMethod and idempotencyKey.
 
-Only SIMULATED payment method is accepted for new payments in the assessment environment. Migration V6 aligns the database's new-invoice default with the DRAFT-first lifecycle without editing previously applied migrations. The service rejects CASH; it enforces invoice ownership for guardians/students, prevents overpayment and returns an existing payment for an identical idempotent retry. Students have read-only fee access; guardians or administrators record payments.
+Only SIMULATED payment method is accepted for new payments in the assessment environment. Migration V7 adds administrator-reviewed public account access requests; V6 aligns the database's new-invoice default with the DRAFT-first lifecycle without editing previously applied migrations. The service rejects CASH; it enforces invoice ownership for guardians/students, prevents overpayment and returns an existing payment for an identical idempotent retry. Students have read-only fee access; guardians or administrators record payments.
 
 ## Audit trail
 

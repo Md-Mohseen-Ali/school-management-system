@@ -1,6 +1,6 @@
 # School Management System — Entity Relationship Diagram
 
-This diagram is based on Flyway migrations V1–V4 in the backend migration directory. It describes the current PostgreSQL relational model. Migration V6 aligns the `fee_invoices.status` database default with the existing DRAFT-first application lifecycle; it does not change the ERD structure.
+This diagram is based on the Flyway schema in the backend migration directory. It describes the current PostgreSQL relational model. Migration V6 aligns the `fee_invoices.status` database default with the existing DRAFT-first application lifecycle. Migration V7 adds a separate public access-request table; it creates no user relationship until an administrator approves a request.
 
 ## Logical data model
 
@@ -10,6 +10,7 @@ erDiagram
     APP_USERS ||--o| TEACHER_PROFILES : teacher_account
     APP_USERS ||--o| GUARDIAN_PROFILES : guardian_account
     APP_USERS o|--o| STUDENTS : student_portal_account
+    APP_USERS o|--o{ ACCOUNT_ACCESS_REQUESTS : reviews
 
     SCHOOL_CLASSES ||--o{ SECTIONS : contains
     SECTIONS ||--o{ STUDENT_ENROLLMENTS : has
@@ -46,6 +47,7 @@ erDiagram
 |---|---|---|
 | app_users | Login identity, name, email, password hash, phone, enabled flag | Referenced by role links, staff/guardian profiles, optional student profile, invoice creator, payment receiver and audit actor |
 | app_user_roles | User-to-role assignments | Composite key: user_id + role |
+| account_access_requests | Untrusted public request data, requested role, review state and administrator decision | Optional reviewer reference to app_users; applicants are not app_users until approval |
 | teacher_profiles | Staff-specific employee code, hire date and active state | One-to-one with app_users |
 | guardian_profiles | Guardian-specific alternate phone | One-to-one with app_users |
 | students | Admission identity, name, dates and academic status | Optional one-to-one login; enrollments, family links, attendance, marks and invoices |
@@ -82,7 +84,8 @@ erDiagram
 
 ## Design notes
 
-1. The students table keeps user_id nullable to allow historical/imported records without a portal login. The current student-registration API requires email and initial password and creates the linked student login as part of registration.
-2. Grading scales are selected by academic year and percentage; they do not belong to a single examination row.
-3. The database enum constraint contains the legacy CASH payment method, but the payment service rejects CASH for new transactions. Assessment payments must be simulated.
-4. This is a logical ERD; the Flyway SQL migrations remain the source of truth for exact SQL data types, indexes and constraints.
+1. Account access requests store applicant data separately from authenticated identities. Approval creates the appropriate user/profile transactionally; rejected or pending requests do not create a login.
+2. The students table keeps user_id nullable to allow historical/imported records without a portal login. The current student-registration API requires email and initial password and creates the linked student login as part of registration.
+3. Grading scales are selected by academic year and percentage; they do not belong to a single examination row.
+4. The database enum constraint contains the legacy CASH payment method, but the payment service rejects CASH for new transactions. Assessment payments must be simulated.
+5. This is a logical ERD; the Flyway SQL migrations remain the source of truth for exact SQL data types, indexes and constraints.

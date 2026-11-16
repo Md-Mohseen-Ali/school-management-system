@@ -137,6 +137,11 @@ jobs:
           API_BASE_URL: http://localhost:8080
         run: node .github/scripts/e2e-provisioning.mjs
 
+      - name: Test public account requests and administrator review
+        env:
+          API_BASE_URL: http://localhost:8080
+        run: node .github/scripts/e2e-account-requests.mjs
+
       - name: Test student fee payment history
         env:
           API_BASE_URL: http://localhost:8080

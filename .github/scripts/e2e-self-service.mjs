@@ -22,15 +22,35 @@ async function run() {
     const data = await expect(label+" detailed profile endpoint",response,200);
     check(label+" profile identifies role-specific details",data.profile?.type===role);
   }
+  const adminProfile = profiles[0].data.profile;
+  const teacherProfile = profiles[1].data.profile;
+  const guardianProfile = profiles[2].data.profile;
   const studentProfile = profiles[3].data.profile;
-  check("Student profile includes admission, class and section",
+  check("Admin profile describes its school-wide management areas",
+    adminProfile.managementAreas?.length >= 5 && adminProfile.administrativeScope === "School-wide");
+  check("Teacher profile includes staff identity and subject assignment details",
+    Boolean(teacherProfile.employeeCode) &&
+    teacherProfile.assignedSections?.some(x => x.subjectCode && x.subjectName && x.assignedOn));
+  check("Guardian profile includes linked-child academic context",
+    guardianProfile.linkedStudents?.some(x => x.studentStatus && x.className && x.sectionName));
+  check("Student profile includes admission, class, section and account creation",
     studentProfile.admissionNumber==="ADM-2026-001" &&
-    studentProfile.className==="Grade 10" && studentProfile.sectionName==="A");
+    studentProfile.className==="Grade 10" && studentProfile.sectionName==="A" &&
+    Boolean(profiles[3].data.createdAt));
 
   const personal = await expect("Student self-service profile",
     await api(student,"/api/v1/student/profile"),200);
   check("Student profile is resolved from current login",
     personal.email==="student1@school.demo" && personal.admissionNumber==="ADM-2026-001");
+
+  const academics = await expect("Student academic overview",
+    await api(student,"/api/v1/student/academics"),200);
+  check("Student academics are scoped to the authenticated student's enrollment",
+    academics.student?.admissionNumber==="ADM-2026-001" &&
+    academics.student?.className==="Grade 10" && academics.student?.sectionName==="A");
+  check("Student subject directory returns the active subject-teacher assignments",
+    Array.isArray(academics.subjects) && academics.subjects.length>0 &&
+    academics.subjects.every(x=>x.subjectCode && x.subjectName && x.teacherName));
 
   const attendance = await expect("Student attendance summary",
     await api(student,"/api/v1/student/attendance/summary?fromDate="+fromDate+"&toDate="+date),200);

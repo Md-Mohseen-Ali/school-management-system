@@ -235,7 +235,7 @@ npm ci
 npm run build
 ```
 
-The GitHub Actions workflow `.github/workflows/isolated-e2e.yml` starts a disposable PostgreSQL 17 database, applies Flyway migrations V1–V7 and seed data, starts the backend and frontend, then runs attendance, examination, fee, self-service, account-provisioning, public account-request approval/rejection, student-payment-history and Chromium role-workspace checks. The latest verified feature revision passed 203 API assertions and 34 browser assertions across all four roles. The database is destroyed with the runner. Exact run evidence is recorded in [PROJECT_TRACKER.md](PROJECT_TRACKER.md).
+The GitHub Actions workflow `.github/workflows/isolated-e2e.yml` starts a disposable PostgreSQL 17 database, applies Flyway migrations V1–V7 and seed data, starts the backend and frontend, then runs attendance, examination, fee, self-service, account-provisioning, public account-request approval/rejection, student-payment-history and Chromium role-workspace checks. The latest verified feature revision passed 249 API assertions across seven suites and 37 browser checks across the public request flow and all four roles. The database is destroyed with the runner. Exact run evidence is recorded in [PROJECT_TRACKER.md](PROJECT_TRACKER.md).
 
 Do not treat an earlier test run as proof for a later commit. Use the workflow run associated with the exact commit being submitted. The separate production smoke suite is read-only and checks the deployed Vercel/Render endpoints; it is not a substitute for isolated workflow tests.
 

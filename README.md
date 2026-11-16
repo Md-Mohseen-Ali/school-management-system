@@ -27,7 +27,7 @@ A full-stack school administration application built with Java 17, Spring Boot, 
 - **Fees:** itemized invoices, simulated-only payment records, idempotency handling, payment history, guardian payment recording, student read-only invoice/fee summaries, and outstanding-balance reconciliation.
 - **Role-specific workspaces:** dashboards and dedicated screens for administrators, teachers, guardians and students, plus an account profile populated from the authenticated user's server-side identity.
 - **Security:** JWT authentication, BCrypt password hashing, server-side role checks, teacher assignment checks, student self-service ownership checks, and guardian-to-student relationship checks.
-- **Audit and errors:** audit events for tracked identity and fee operations and standardized JSON error responses, including negative/authorization/conflict cases.
+- **Audit and errors:** structured audit events for student, academic structure, enrollment, family-link, teacher-assignment, attendance, examination, grading, identity and fee mutations; standardized JSON errors for validation, authorization and business conflicts.
 
 ## Architecture
 
@@ -231,7 +231,7 @@ npm ci
 npm run build
 ```
 
-The GitHub Actions workflow `.github/workflows/isolated-e2e.yml` starts a disposable PostgreSQL 17 database, applies the actual Flyway migrations and seed data, starts the backend and frontend, then runs attendance, examination, fee, self-service, account-provisioning and Chromium role-workspace checks. The database is destroyed with the runner. Test run links and requirement status are recorded in [PROJECT_TRACKER.md](PROJECT_TRACKER.md).
+The GitHub Actions workflow `.github/workflows/isolated-e2e.yml` starts a disposable PostgreSQL 17 database, applies Flyway migrations V1–V6 and seed data, starts the backend and frontend, then runs attendance, examination, fee, self-service, account-provisioning, student-payment-history and Chromium role-workspace checks. The latest verified feature revision passed 203 API assertions and 34 browser assertions across all four roles. The database is destroyed with the runner. Exact run evidence is recorded in [PROJECT_TRACKER.md](PROJECT_TRACKER.md).
 
 Do not treat an earlier test run as proof for a later commit. Use the workflow run associated with the exact commit being submitted. The separate production smoke suite is read-only and checks the deployed Vercel/Render endpoints; it is not a substitute for isolated workflow tests.
 
@@ -244,8 +244,8 @@ Do not treat an earlier test run as proof for a later commit. Use the workflow r
 
 ## Known limitations / review before submission
 
-- Automated integration tests and negative/conflict tests need further coverage.
-- The new academic and operational UI workflows need production verification with each demo role after deployment. Automated CI builds validate compilation, not every database workflow.
+- The isolated E2E suite covers core business lifecycles and the documented privacy regressions; additional boundary, high-volume, mobile viewport and assistive-technology tests remain worthwhile.
+- The feature branch has not been merged or production-deployed. Re-run the read-only production smoke test after deployment with each demo role.
 - Student self-service requires a linked AppUser account. New student registration now creates that login as part of the registration transaction; the administrator must communicate the initial password securely.
 - Teacher/guardian account provisioning creates the account/profile, but a teacher still needs section/subject assignment and a guardian still needs student linking before their dashboards have related records.
 - Student fee screens are read-only; guardians or administrators record simulated payments. No real payment processor is connected.

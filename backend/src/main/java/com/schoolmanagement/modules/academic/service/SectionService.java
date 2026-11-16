@@ -2,6 +2,9 @@ package com.schoolmanagement.modules.academic.service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+
+import com.schoolmanagement.common.audit.AuditService;
 
 import jakarta.persistence.criteria.Predicate;
 
@@ -25,13 +28,16 @@ public class SectionService {
 
     private final SectionRepository sectionRepository;
     private final SchoolClassRepository schoolClassRepository;
+    private final AuditService auditService;
 
     public SectionService(
             SectionRepository sectionRepository,
-            SchoolClassRepository schoolClassRepository
+            SchoolClassRepository schoolClassRepository,
+            AuditService auditService
     ) {
         this.sectionRepository = sectionRepository;
         this.schoolClassRepository = schoolClassRepository;
+        this.auditService = auditService;
     }
 
     @Transactional
@@ -62,7 +68,12 @@ public class SectionService {
                 request.academicYear()
         );
 
-        return toResponse(sectionRepository.save(section));
+        Section saved = sectionRepository.save(section);
+        auditService.record("SECTION_CREATED", "SECTION", saved.getId().toString(),
+                null, Map.of("schoolClassId", schoolClass.getId(),
+                        "sectionName", saved.getSectionName(),
+                        "academicYear", saved.getAcademicYear()));
+        return toResponse(saved);
     }
 
     @Transactional(readOnly = true)
@@ -152,11 +163,17 @@ public class SectionService {
             );
         }
 
+        String oldSectionName = section.getSectionName();
+        String oldAcademicYear = section.getAcademicYear();
         section.setSchoolClass(schoolClass);
         section.setSectionName(sectionName);
         section.setAcademicYear(request.academicYear());
 
-        return toResponse(sectionRepository.save(section));
+        Section saved = sectionRepository.save(section);
+        auditService.record("SECTION_UPDATED", "SECTION", saved.getId().toString(),
+                Map.of("sectionName", oldSectionName, "academicYear", oldAcademicYear),
+                Map.of("sectionName", saved.getSectionName(), "academicYear", saved.getAcademicYear()));
+        return toResponse(saved);
     }
 
     private SchoolClass getSchoolClass(Long id) {

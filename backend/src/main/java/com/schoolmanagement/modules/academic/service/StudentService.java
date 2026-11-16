@@ -16,6 +16,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.schoolmanagement.common.audit.AuditService;
+import java.util.Map;
+
 import com.schoolmanagement.modules.academic.dto.CreateStudentRequest;
 import com.schoolmanagement.modules.academic.dto.StudentResponse;
 import com.schoolmanagement.modules.academic.dto.UpdateStudentRequest;
@@ -36,14 +39,17 @@ public class StudentService {
     private final StudentRepository studentRepository;
     private final AppUserRepository appUserRepository;
     private final PasswordEncoder passwordEncoder;
+    private final AuditService auditService;
 
     public StudentService(
             StudentRepository studentRepository,
             AppUserRepository appUserRepository,
-            PasswordEncoder passwordEncoder) {
+            PasswordEncoder passwordEncoder,
+            AuditService auditService) {
         this.studentRepository = studentRepository;
         this.appUserRepository = appUserRepository;
         this.passwordEncoder = passwordEncoder;
+        this.auditService = auditService;
     }
 
     // Register student
@@ -107,7 +113,11 @@ public class StudentService {
 
         student.setStatus(StudentStatus.ACTIVE);
 
-        return toResponse(studentRepository.save(student));
+        Student saved = studentRepository.save(student);
+        auditService.record("STUDENT_CREATED", "STUDENT", saved.getId().toString(),
+                null, Map.of("admissionNumber", saved.getAdmissionNumber(),
+                        "status", saved.getStatus().name()));
+        return toResponse(saved);
     }
 
     // Get all students with search and pagination
@@ -184,9 +194,14 @@ public class StudentService {
         student.setFirstName(request.firstName().trim());
         student.setLastName(request.lastName().trim());
         student.setDateOfBirth(request.dateOfBirth());
+        StudentStatus previousStatus = student.getStatus();
         student.setStatus(request.status());
 
-        return toResponse(studentRepository.save(student));
+        Student saved = studentRepository.save(student);
+        auditService.record("STUDENT_UPDATED", "STUDENT", saved.getId().toString(),
+                Map.of("status", previousStatus.name()),
+                Map.of("status", saved.getStatus().name()));
+        return toResponse(saved);
     }
 
     // Soft delete: deactivate instead of physically deleting
@@ -194,9 +209,13 @@ public class StudentService {
 
         Student student = findStudent(id);
 
+        StudentStatus previousStatus = student.getStatus();
         student.setStatus(StudentStatus.INACTIVE);
 
-        studentRepository.save(student);
+        Student saved = studentRepository.save(student);
+        auditService.record("STUDENT_DEACTIVATED", "STUDENT", saved.getId().toString(),
+                Map.of("status", previousStatus.name()),
+                Map.of("status", saved.getStatus().name()));
     }
 
     private Student findStudent(Long id) {

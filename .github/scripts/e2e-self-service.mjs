@@ -94,6 +94,11 @@ async function run() {
   const classReport = await expect("Teacher class attendance report for assigned section",
     await api(teacher,"/api/v1/attendance/reports/sections/"+first.id+"?fromDate="+fromDate+"&toDate="+date),200);
   check("Teacher report returns student-level aggregates",Array.isArray(classReport.students));
+  const individualReport = await expect("Teacher can read an enrolled student's assigned-section summary",
+    await api(teacher,"/api/v1/attendance/reports/students/"+ownChild.id+
+      "?sectionId="+first.id+"&fromDate="+fromDate+"&toDate="+date),200);
+  check("Teacher individual report identifies the enrolled student",
+    String(individualReport.studentId)===String(ownChild.id));
   await expect("Teacher cannot report on unassigned section",
     await api(teacher,"/api/v1/attendance/reports/sections/999999?fromDate="+fromDate+"&toDate="+date),403);
 
@@ -124,5 +129,14 @@ async function run() {
     await api(guardian,"/api/v1/guardian/examinations/students/"+ownChild.id),200);
   check("Published historical examination remains visible to the linked guardian",
     rows(guardianHistoricalExams).some(x=>String(x.examName||"").startsWith("E2E Results")));
+
+  const auditEvents = rows(await expect("Admin reads audit trail after academic changes",
+    await api(admin,"/api/v1/audit-logs?page=0&size=100&sort=occurredAt,desc"),200));
+  check("Audit trail captures student admission",
+    auditEvents.some(x=>x.action==="STUDENT_CREATED" &&
+      String(x.entityId)===String(unrelatedStudent.id)));
+  check("Audit trail captures enrollment ending",
+    auditEvents.some(x=>x.action==="STUDENT_ENROLLMENT_ENDED" &&
+      String(x.entityId)===String(activeEnrollment.id)));
 }
 run().catch(e=>check("Self-service E2E exception",false,e?.message||String(e))).finally(report);

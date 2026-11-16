@@ -35,35 +35,6 @@ async function run() {
   created.sectionId = section.id;
   check("Teacher roster includes seeded student",true,section.className+" "+section.sectionName+"; "+roster.length+" enrolled");
 
-  // Create an enrollment that is valid for a past attendance date, then end
-  // it today. The administrator's historical register must retain that student.
-  const historicalStudent = await expect("Admin creates historical-roster test student",
-    await api(admin,"/api/v1/academic/students","POST",{
-      admissionNumber:"E2E-HISTORY-"+tag,firstName:"Historical",lastName:"Student",
-      admissionDate:historicalDate,email:"history-"+tag+"@example.com",
-      initialPassword:"History@2026School"
-    }),201);
-  const historicalEnrollment = await expect("Admin enrolls student before historical register date",
-    await api(admin,"/api/v1/academic/enrollments","POST",{
-      studentId:historicalStudent.id,sectionId:section.id,startDate:historicalDate
-    }),200);
-  const historicalSession = await expect("Teacher creates historical attendance session",
-    await api(teacher,"/api/v1/attendance/sessions","POST",{
-      sectionId:section.id,attendanceDate:historicalDate,
-      sessionCode:"HIST"+tag.slice(-12),notes:"Historical roster regression test"
-    }),200);
-  await expect("Admin ends the historical test enrollment",
-    await api(admin,"/api/v1/academic/enrollments/"+historicalEnrollment.id+"/end","PATCH"),200);
-  const historicalRoster = rows(await expect("Admin queries roster on the historical date",
-    await api(admin,"/api/v1/academic/enrollments?sectionId="+section.id+"&attendanceDate="+historicalDate+"&page=0&size=100"),200));
-  check("Historical register retains a student whose enrollment later ended",
-    historicalRoster.some(x=>String(x.studentId)===String(historicalStudent.id)));
-  const activeRoster = rows(await expect("Admin queries currently active section enrollment",
-    await api(admin,"/api/v1/academic/enrollments?sectionId="+section.id+"&active=true&page=0&size=100"),200));
-  check("Ended student is excluded from the current active roster",
-    !activeRoster.some(x=>String(x.studentId)===String(historicalStudent.id)));
-  check("Historical attendance session is retained for register review",Boolean(historicalSession.id));
-
   const body = {sectionId:section.id,attendanceDate:date,sessionCode:"E2E"+tag.slice(-12),notes:"E2E test "+tag};
   const session = await expect("Teacher creates attendance session",
     await api(teacher,"/api/v1/attendance/sessions","POST",body),200);
@@ -115,6 +86,36 @@ async function run() {
      "ATTENDANCE_SESSION_SUBMITTED","ATTENDANCE_SESSION_LOCKED"]
       .every(action=>sessionAuditActions.includes(action)),
     sessionAuditActions.join(", "));
+  // Create an enrollment that is valid for a past attendance date, then end
+  // it today. The administrator's historical register must retain that student.
+  const historicalStudent = await expect("Admin creates historical-roster test student",
+    await api(admin,"/api/v1/academic/students","POST",{
+      admissionNumber:"E2E-HISTORY-"+tag,firstName:"Historical",lastName:"Student",
+      admissionDate:historicalDate,email:"history-"+tag+"@example.com",
+      initialPassword:"History@2026School"
+    }),201);
+  const historicalEnrollment = await expect("Admin enrolls student before historical register date",
+    await api(admin,"/api/v1/academic/enrollments","POST",{
+      studentId:historicalStudent.id,sectionId:section.id,startDate:historicalDate
+    }),200);
+  const historicalSession = await expect("Teacher creates historical attendance session",
+    await api(teacher,"/api/v1/attendance/sessions","POST",{
+      sectionId:section.id,attendanceDate:historicalDate,
+      sessionCode:"HIST"+tag.slice(-12),notes:"Historical roster regression test"
+    }),200);
+  await expect("Admin ends the historical test enrollment",
+    await api(admin,"/api/v1/academic/enrollments/"+historicalEnrollment.id+"/end","PATCH"),200);
+  const historicalRoster = rows(await expect("Admin queries roster on the historical date",
+    await api(admin,"/api/v1/academic/enrollments?sectionId="+section.id+"&attendanceDate="+historicalDate+"&page=0&size=100"),200));
+  check("Historical register retains a student whose enrollment later ended",
+    historicalRoster.some(x=>String(x.studentId)===String(historicalStudent.id)));
+  const activeRoster = rows(await expect("Admin queries currently active section enrollment",
+    await api(admin,"/api/v1/academic/enrollments?sectionId="+section.id+"&active=true&page=0&size=100"),200));
+  check("Ended student is excluded from the current active roster",
+    !activeRoster.some(x=>String(x.studentId)===String(historicalStudent.id)));
+  check("Historical attendance session is retained for register review",Boolean(historicalSession.id));
+
+
   process.stdout.write("RETAINED ATTENDANCE TEST DATA: "+JSON.stringify(created)+"\n");
 }
 run().catch(e=>check("Attendance E2E runner exception",false,e && e.message ? e.message : String(e))).finally(report);

@@ -8,6 +8,9 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.Map;
+
+import com.schoolmanagement.common.audit.AuditService;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -45,6 +48,7 @@ public class ExaminationResultService {
     private final GradingScaleRepository gradingScaleRepository;
     private final StudentEnrollmentRepository enrollmentRepository;
     private final StudentRepository studentRepository;
+    private final AuditService auditService;
 
     public ExaminationResultService(
             ExaminationRepository examinationRepository,
@@ -52,7 +56,8 @@ public class ExaminationResultService {
             ExaminationMarkRepository markRepository,
             GradingScaleRepository gradingScaleRepository,
             StudentEnrollmentRepository enrollmentRepository,
-            StudentRepository studentRepository
+            StudentRepository studentRepository,
+            AuditService auditService
     ) {
         this.examinationRepository = examinationRepository;
         this.subjectRepository = subjectRepository;
@@ -60,6 +65,7 @@ public class ExaminationResultService {
         this.gradingScaleRepository = gradingScaleRepository;
         this.enrollmentRepository = enrollmentRepository;
         this.studentRepository = studentRepository;
+        this.auditService = auditService;
     }
 
     // ==================================================
@@ -161,10 +167,11 @@ public class ExaminationResultService {
         }
 
         examination.setStatus(ExaminationStatus.COMPLETED);
-
-        return toExaminationResponse(
-                examinationRepository.save(examination)
-        );
+        Examination saved = examinationRepository.save(examination);
+        auditService.record("EXAMINATION_COMPLETED", "EXAMINATION", saved.getId().toString(),
+                Map.of("status", ExaminationStatus.SCHEDULED.name()),
+                Map.of("status", saved.getStatus().name()));
+        return toExaminationResponse(saved);
     }
 
     // ==================================================
@@ -184,10 +191,11 @@ public class ExaminationResultService {
         }
 
         examination.setStatus(ExaminationStatus.PUBLISHED);
-
-        return toExaminationResponse(
-                examinationRepository.save(examination)
-        );
+        Examination saved = examinationRepository.save(examination);
+        auditService.record("EXAMINATION_PUBLISHED", "EXAMINATION", saved.getId().toString(),
+                Map.of("status", ExaminationStatus.COMPLETED.name()),
+                Map.of("status", saved.getStatus().name()));
+        return toExaminationResponse(saved);
     }
 
     // ==================================================

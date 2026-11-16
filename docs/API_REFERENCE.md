@@ -64,7 +64,7 @@ All routes in this section are ADMIN-only.
 
 Student creation requires admissionNumber, firstName, lastName, email and initialPassword. Password length is 12–72 characters (the service also enforces BCrypt's 72-byte limit). Optional fields include dateOfBirth, admissionDate and phone. Creating a student creates and links a STUDENT account.
 
-Common list filters include search, status, classId, academicYear, sectionId, studentId, teacherId, subjectId, active and guardianId where supported. Spring Page responses accept page, size and sort parameters.
+Common list filters include search, status, classId, academicYear, sectionId, studentId, teacherId, subjectId, active, guardianId and attendanceDate where supported. The enrollment directory's attendanceDate filter returns enrollments whose start/end interval covers that date; use it for historical attendance registers and examination rosters rather than `active=true`. Spring Page responses accept page, size and sort parameters.
 
 ## Attendance
 
@@ -77,7 +77,7 @@ Common list filters include search, status, classId, academicYear, sectionId, st
 | GET | /attendance/sessions/{sessionId}/records | ADMIN, TEACHER (own session) | Read register |
 | POST | /attendance/sessions/{sessionId}/submit | TEACHER | Submit complete register |
 | POST | /attendance/sessions/{sessionId}/lock | ADMIN | Lock submitted session |
-| GET | /attendance/reports/students/{studentId} | ADMIN, TEACHER (assigned section required) | Student attendance summary |
+| GET | /attendance/reports/students/{studentId} | ADMIN, TEACHER (assigned section and student enrollment overlap with requested date range required) | Student attendance summary |
 | GET | /attendance/reports/sections/{sectionId} | ADMIN, assigned TEACHER | Class attendance summary |
 | GET | /teacher/roster/sections | TEACHER | Active assigned section options |
 | GET | /teacher/roster?sectionId=&attendanceDate= | TEACHER (assigned section) | Students enrolled on the requested date |
@@ -110,7 +110,7 @@ Attendance records request:
 
 Allowed attendance statuses: PRESENT, ABSENT, LATE and EXCUSED. The service blocks duplicate student IDs in one request, duplicate session keys, students not enrolled on the attendance date, incomplete submission and modification after submission/lock.
 
-Student and guardian date-range routes require ISO-8601 fromDate and toDate query parameters (YYYY-MM-DD).
+Student and guardian date-range routes require ISO-8601 fromDate and toDate query parameters (YYYY-MM-DD). For an individual teacher report, the teacher must be assigned to sectionId and the student must have an enrollment in that section overlapping the requested date range. Unrelated or unknown student IDs receive the same 404 response.
 
 ## Examinations, marks and grading
 
@@ -155,13 +155,13 @@ Grading-scale fields: academicYear, grade, minPercentage, maxPercentage and opti
 
 Invoice request fields: invoiceNumber, studentId, academicYear, issueDate and dueDate. Invoice item fields: description and amount. Payment request fields: amount, paymentMethod and idempotencyKey.
 
-Only SIMULATED payment method is accepted for new payments in the assessment environment. The service rejects CASH; it enforces invoice ownership for guardians/students, prevents overpayment and returns an existing payment for an identical idempotent retry. Students have read-only fee access; guardians or administrators record payments.
+Only SIMULATED payment method is accepted for new payments in the assessment environment. Migration V6 aligns the database's new-invoice default with the DRAFT-first lifecycle without editing previously applied migrations. The service rejects CASH; it enforces invoice ownership for guardians/students, prevents overpayment and returns an existing payment for an identical idempotent retry. Students have read-only fee access; guardians or administrators record payments.
 
 ## Audit trail
 
 | Method | Route | Access | Purpose |
 |---|---|---|---|
-| GET | /audit-logs | ADMIN | Read audit entries including actor, action, entity, time and old/new JSON values |
+| GET | /audit-logs | ADMIN | Read paginated audit entries including actor, action, entity, time and old/new JSON values. Material student, academic structure, enrollment, guardian-link, teacher-assignment, attendance, examination, grading, identity and fee mutations are recorded. |
 
 ## HTTP error conventions
 

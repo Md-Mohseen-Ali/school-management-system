@@ -141,11 +141,13 @@ public class StudentGuardianService {
 
         StudentGuardian link = findLink(studentId, guardianId);
 
+        boolean oldPrimary = link.isPrimaryGuardian();
+        if (oldPrimary == primary) {
+            return toResponse(link);
+        }
         if (primary) {
             clearExistingPrimary(studentId);
         }
-
-        boolean oldPrimary = link.isPrimaryGuardian();
         link.setPrimaryGuardian(primary);
 
         try {
@@ -179,7 +181,12 @@ public class StudentGuardianService {
                 linkRepository.findByStudent_Id(studentId);
 
         for (StudentGuardian link : existingLinks) {
-            link.setPrimaryGuardian(false);
+            if (link.isPrimaryGuardian()) {
+                link.setPrimaryGuardian(false);
+                auditService.record("STUDENT_GUARDIAN_PRIMARY_CHANGED", "STUDENT_GUARDIAN",
+                        studentId + ":" + link.getGuardian().getId(),
+                        Map.of("primary", true), Map.of("primary", false));
+            }
         }
 
         linkRepository.saveAll(existingLinks);

@@ -15,8 +15,8 @@ Status meanings: **Verified** = passed the current feature-branch build or autom
 | Daily attendance, duplicate prevention, student/class summaries | Teacher roster scoped to assignment and enrollment date; session DRAFT → SUBMITTED → LOCKED; student, guardian and teacher reports | Verified: attendance and self-service E2E |
 | Exams, marks, grading and report cards | Exam setup/scheduling; teacher-assigned marks; grade bands; complete/publish transitions; admin/student/guardian report cards | Verified: examination E2E |
 | Fees, invoices, payments and balances | Draft/itemize/issue/cancel; simulated-only payment; idempotency; admin/guardian payment history; student read-only invoice/payment history | Verified: fee and student payment-history E2E |
-| RBAC and data privacy | Role-level route security, teacher assignment checks, student self-ownership and guardian/student relationship checks | Verified by negative and cross-role API tests |
-| Reporting and audit | Admin audit workspace, class attendance reports, student and guardian summaries | Verified by E2E API suite and browser workspace checks |
+| RBAC and data privacy | Role-level route security, teacher assignment checks, teacher individual-report enrollment checks, student self-ownership and guardian/student relationship checks | Verified by negative, cross-role and unrelated-student report E2E tests |
+| Reporting and audit | Admin audit workspace, class attendance reports, student and guardian summaries; structured audit events across academic, attendance, examination, grading, identity and financial mutations | Verified by audit-event assertions in attendance, exam, fee and self-service E2E suites |
 | User-friendly role workspaces | Separate Admin, Teacher, Guardian and Student navigation, role-specific dashboard metrics and quick links | Verified by Chromium role-workspace test |
 | Profile screen | No raw JSON display; real authenticated account identity, contact, role and role-specific school/family details | Verified by Chromium role-workspace test |
 | Search/filter/pagination | Existing academic/operational search and paging; student/guardian attendance date filters; invoice search | Core paths exercised; exhaustive filter-combination tests still pending |
@@ -59,6 +59,17 @@ Status meanings: **Verified** = passed the current feature-branch build or autom
 - [x] New student admission creates a login that can authenticate and load the self-service profile.
 - [x] Student workspace browser checks.
 
+## 2.1 Correctness and audit hardening (2026-11-16)
+
+- [x] Teacher individual attendance reports require both an active assignment to the requested section and an enrollment overlap for the student/date range. Unrelated or unknown students return the same 404 response.
+- [x] Administrator enrollment listings accept an `attendanceDate` filter that returns the roster valid on that date. Admin attendance registers and exam mark-entry rosters use the attendance/subject date rather than today's active enrollment.
+- [x] Student and guardian published-exam lists use enrollment on each configured subject date. Historical results remain discoverable after a transfer or ended enrollment.
+- [x] Enrollment start/end defaults use the school's `Asia/Kolkata` timezone.
+- [x] Flyway V6 changes the database default for new fee invoices to `DRAFT` without editing previously applied migrations.
+- [x] Audit events cover student create/update/deactivation, class/section/subject changes, enrollments, guardian links, teacher assignments, attendance lifecycle, examination setup/marks/publication, grading scales, identity provisioning and fee operations.
+- [x] Teacher examination discovery no longer scans every examination and executes per-examination/per-subject assignment checks; the repository query scopes directly to active assigned subjects.
+- [x] Regression E2E tests cover unrelated-student report access, historical attendance roster, historical student/guardian exam discovery and audit event persistence.
+
 ## 3. Current feature-branch verification
 
 **Verified candidate**
@@ -70,13 +81,13 @@ Full workflow: https://github.com/Md-Mohseen-Ali/school-management-system/action
 
 | Suite | Result |
 |---|---:|
-| Attendance lifecycle | 22 / 22 |
-| Examination and report cards | 54 / 54 |
+| Attendance lifecycle, date-aware historical roster and attendance audit | 33 / 33 |
+| Examination, report cards, historical visibility and examination audit | 57 / 57 |
 | Fees and simulated payments | 37 / 37 |
-| Student/guardian/teacher self-service and privacy | 42 / 42 |
+| Student/guardian/teacher self-service, privacy, historical exams and academic audit | 55 / 55 |
 | Teacher/guardian/student account provisioning | 16 / 16 |
 | Student payment history | 5 / 5 |
-| **Total API assertions** | **176 / 176** |
+| **Total API assertions** | **203 / 203** |
 
 ### Browser checks
 
@@ -90,7 +101,7 @@ Full workflow: https://github.com/Md-Mohseen-Ali/school-management-system/action
 ### Build and environment
 
 - Backend Maven package/compile: passed.
-- Flyway migrations against disposable PostgreSQL 17: passed.
+- Flyway migrations V1–V6 against disposable PostgreSQL 17: passed.
 - Frontend Vite production build: passed.
 - Chromium installation and browser run: passed.
 - Test data is created only in the disposable GitHub Actions database; the database is destroyed after the run.
@@ -125,15 +136,15 @@ The full-stack feature workflow is configured at .github/workflows/isolated-e2e.
 - No email-delivery, self-service password reset or profile-edit workflow is included. Account corrections are handled by the school administrator.
 - Teacher accounts still need active section/subject assignments; guardians need student links before family data appears.
 - No production data is modified by the isolated E2E workflow.
-- Responsive CSS has been added; dedicated mobile/tablet viewport and assistive-technology audits are still recommended.
+- Responsive CSS has been added; dedicated mobile/tablet viewport, screen-reader and keyboard-only audits are still recommended.
 
 ## 6. Change control
 
 - [x] Feature work isolated from main.
 - [x] Backend build and isolated PostgreSQL startup.
 - [x] Frontend production build.
-- [x] All six API E2E suites pass.
-- [x] Browser tests pass for all four roles.
+- [x] All six API E2E suites pass on the hardened revision (203/203 assertions).
+- [x] Browser tests pass for all four roles (34/34 assertions).
 - [x] Test logs reviewed and test-selector failures corrected.
 - [x] ERD and API reference added.
 - [x] Tracker updated with exact test evidence.

@@ -1,6 +1,7 @@
 package com.schoolmanagement.modules.academic.service;
 
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -27,6 +28,8 @@ import com.schoolmanagement.modules.academic.entity.StudentStatus;
 
 @Service
 public class StudentEnrollmentService {
+
+    private static final ZoneId SCHOOL_ZONE = ZoneId.of("Asia/Kolkata");
 
     private final StudentEnrollmentRepository enrollmentRepository;
     private final StudentRepository studentRepository;
@@ -77,7 +80,7 @@ public class StudentEnrollmentService {
 
         LocalDate startDate = request.startDate() != null
                 ? request.startDate()
-                : LocalDate.now();
+                : LocalDate.now(SCHOOL_ZONE);
 
         StudentEnrollment enrollment = new StudentEnrollment(
                 student,
@@ -106,6 +109,7 @@ public class StudentEnrollmentService {
             Long studentId,
             Long sectionId,
             Boolean active,
+            LocalDate attendanceDate,
             Pageable pageable
     ) {
 
@@ -128,14 +132,21 @@ public class StudentEnrollmentService {
 
             if (active != null) {
                 if (active) {
-                    predicates.add(
-                            cb.isNull(root.get("endDate"))
-                    );
+                    predicates.add(cb.isNull(root.get("endDate")));
                 } else {
-                    predicates.add(
-                            cb.isNotNull(root.get("endDate"))
-                    );
+                    predicates.add(cb.isNotNull(root.get("endDate")));
                 }
+            }
+
+            // Historical registers must use the student's enrollment on the
+            // selected record date, not today's active enrollment.
+            if (attendanceDate != null) {
+                predicates.add(cb.lessThanOrEqualTo(
+                        root.<LocalDate>get("startDate"), attendanceDate));
+                predicates.add(cb.or(
+                        cb.isNull(root.get("endDate")),
+                        cb.greaterThanOrEqualTo(
+                                root.<LocalDate>get("endDate"), attendanceDate)));
             }
 
             return cb.and(predicates.toArray(new Predicate[0]));
@@ -165,7 +176,7 @@ public class StudentEnrollmentService {
             );
         }
 
-        LocalDate endDate = LocalDate.now();
+        LocalDate endDate = LocalDate.now(SCHOOL_ZONE);
 
         if (endDate.isBefore(enrollment.getStartDate())) {
             throw new ResponseStatusException(

@@ -1,6 +1,7 @@
 package com.schoolmanagement.modules.academic.service;
 
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.Locale;
 import java.util.ArrayList;
 import java.util.List;
@@ -15,21 +16,40 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.schoolmanagement.common.audit.AuditService;
+import java.util.Map;
+
 import com.schoolmanagement.modules.academic.dto.CreateStudentRequest;
 import com.schoolmanagement.modules.academic.dto.StudentResponse;
 import com.schoolmanagement.modules.academic.dto.UpdateStudentRequest;
 import com.schoolmanagement.modules.academic.entity.Student;
 import com.schoolmanagement.modules.academic.entity.StudentStatus;
 import com.schoolmanagement.modules.academic.repository.StudentRepository;
+import com.schoolmanagement.modules.identity.entity.AppUser;
+import com.schoolmanagement.modules.identity.entity.UserRole;
+import com.schoolmanagement.modules.identity.repository.AppUserRepository;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import java.nio.charset.StandardCharsets;
+import java.util.Set;
 
 @Service
 @Transactional
 public class StudentService {
 
     private final StudentRepository studentRepository;
+    private final AppUserRepository appUserRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final AuditService auditService;
 
-    public StudentService(StudentRepository studentRepository) {
+    public StudentService(
+            StudentRepository studentRepository,
+            AppUserRepository appUserRepository,
+            PasswordEncoder passwordEncoder,
+            AuditService auditService) {
         this.studentRepository = studentRepository;
+        this.appUserRepository = appUserRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.auditService = auditService;
     }
 
     // Register student
@@ -38,6 +58,13 @@ public class StudentService {
         String admissionNumber = request.admissionNumber()
                 .trim()
                 .toUpperCase(Locale.ROOT);
+
+        LocalDate schoolToday = LocalDate.now(ZoneId.of("Asia/Kolkata"));
+        if (request.admissionDate() != null && request.admissionDate().isAfter(schoolToday)) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Admission date cannot be in the future in the school's timezone");
+        }
 
         if (studentRepository.existsByAdmissionNumberIgnoreCase(
                 admissionNumber)) {
@@ -48,7 +75,30 @@ public class StudentService {
             );
         }
 
+        String email = request.email().trim().toLowerCase(Locale.ROOT);
+        if (appUserRepository.existsByEmailIgnoreCase(email)) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "An account with this email already exists");
+        }
+
+        if (request.initialPassword().getBytes(StandardCharsets.UTF_8).length > 72) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Initial password cannot exceed 72 UTF-8 bytes");
+        }
+
+        AppUser portalUser = new AppUser();
+        portalUser.setFullName(request.firstName().trim() + " " + request.lastName().trim());
+        portalUser.setEmail(email);
+        portalUser.setPhone(request.phone() == null || request.phone().isBlank() ? null : request.phone().trim());
+        portalUser.setPasswordHash(passwordEncoder.encode(request.initialPassword()));
+        portalUser.setEnabled(true);
+        portalUser.setRoles(Set.of(UserRole.STUDENT));
+        portalUser = appUserRepository.saveAndFlush(portalUser);
+
         Student student = new Student();
+        student.setUser(portalUser);
 
         student.setAdmissionNumber(admissionNumber);
         student.setFirstName(request.firstName().trim());
@@ -58,12 +108,16 @@ public class StudentService {
         student.setAdmissionDate(
                 request.admissionDate() != null
                         ? request.admissionDate()
-                        : LocalDate.now()
+                        : LocalDate.now(ZoneId.of("Asia/Kolkata"))
         );
 
         student.setStatus(StudentStatus.ACTIVE);
 
-        return toResponse(studentRepository.save(student));
+        Student saved = studentRepository.save(student);
+        auditService.record("STUDENT_CREATED", "STUDENT", saved.getId().toString(),
+                null, Map.of("admissionNumber", saved.getAdmissionNumber(),
+                        "status", saved.getStatus().name()));
+        return toResponse(saved);
     }
 
     // Get all students with search and pagination
@@ -140,9 +194,14 @@ public class StudentService {
         student.setFirstName(request.firstName().trim());
         student.setLastName(request.lastName().trim());
         student.setDateOfBirth(request.dateOfBirth());
+        StudentStatus previousStatus = student.getStatus();
         student.setStatus(request.status());
 
-        return toResponse(studentRepository.save(student));
+        Student saved = studentRepository.save(student);
+        auditService.record("STUDENT_UPDATED", "STUDENT", saved.getId().toString(),
+                Map.of("status", previousStatus.name()),
+                Map.of("status", saved.getStatus().name()));
+        return toResponse(saved);
     }
 
     // Soft delete: deactivate instead of physically deleting
@@ -150,9 +209,13 @@ public class StudentService {
 
         Student student = findStudent(id);
 
+        StudentStatus previousStatus = student.getStatus();
         student.setStatus(StudentStatus.INACTIVE);
 
-        studentRepository.save(student);
+        Student saved = studentRepository.save(student);
+        auditService.record("STUDENT_DEACTIVATED", "STUDENT", saved.getId().toString(),
+                Map.of("status", previousStatus.name()),
+                Map.of("status", saved.getStatus().name()));
     }
 
     private Student findStudent(Long id) {
@@ -174,7 +237,9 @@ public class StudentService {
                 student.getLastName(),
                 student.getDateOfBirth(),
                 student.getAdmissionDate(),
-                student.getStatus()
+                student.getStatus(),
+                student.getUser() == null ? null : student.getUser().getEmail(),
+                student.getUser() != null && student.getUser().isEnabled()
         );
     }
 }

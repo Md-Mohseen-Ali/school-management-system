@@ -5,6 +5,9 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.Map;
+
+import com.schoolmanagement.common.audit.AuditService;
 
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
@@ -43,6 +46,7 @@ public class ExaminationMarksService {
     private final StudentEnrollmentRepository enrollmentRepository;
     private final TeacherProfileRepository teacherRepository;
     private final TeacherAssignmentRepository assignmentRepository;
+    private final AuditService auditService;
 
     public ExaminationMarksService(
             ExaminationMarkRepository markRepository,
@@ -50,7 +54,8 @@ public class ExaminationMarksService {
             StudentRepository studentRepository,
             StudentEnrollmentRepository enrollmentRepository,
             TeacherProfileRepository teacherRepository,
-            TeacherAssignmentRepository assignmentRepository
+            TeacherAssignmentRepository assignmentRepository,
+            AuditService auditService
     ) {
         this.markRepository = markRepository;
         this.examinationSubjectRepository = examinationSubjectRepository;
@@ -58,6 +63,7 @@ public class ExaminationMarksService {
         this.enrollmentRepository = enrollmentRepository;
         this.teacherRepository = teacherRepository;
         this.assignmentRepository = assignmentRepository;
+        this.auditService = auditService;
     }
 
     // ENTER OR UPDATE MARKS
@@ -144,6 +150,11 @@ public class ExaminationMarksService {
             );
         }
 
+        auditService.record("EXAMINATION_MARKS_SAVED", "EXAMINATION_SUBJECT",
+                examinationSubject.getId().toString(), null,
+                Map.of("examinationId", examination.getId(),
+                        "subjectId", examinationSubject.getSubject().getId(),
+                        "recordCount", marksToSave.size()));
         return getMarksForSubject(
                 examinationSubject,
                 authenticatedEmail,

@@ -27,6 +27,13 @@ public class TeacherProfile {
     protected TeacherProfile() {
     }
 
+    public TeacherProfile(Long userId, String employeeCode, LocalDate hireDate) {
+        this.userId = userId;
+        this.employeeCode = employeeCode;
+        this.hireDate = hireDate;
+        this.active = true;
+    }
+
     public Long getId() {
         return id;
     }

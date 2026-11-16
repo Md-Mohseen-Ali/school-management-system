@@ -2,6 +2,9 @@ package com.schoolmanagement.modules.academic.service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+
+import com.schoolmanagement.common.audit.AuditService;
 
 import jakarta.persistence.criteria.Predicate;
 
@@ -33,17 +36,20 @@ public class TeacherAssignmentService {
     private final TeacherProfileRepository teacherRepository;
     private final SectionRepository sectionRepository;
     private final SubjectRepository subjectRepository;
+    private final AuditService auditService;
 
     public TeacherAssignmentService(
             TeacherAssignmentRepository assignmentRepository,
             TeacherProfileRepository teacherRepository,
             SectionRepository sectionRepository,
-            SubjectRepository subjectRepository
+            SubjectRepository subjectRepository,
+            AuditService auditService
     ) {
         this.assignmentRepository = assignmentRepository;
         this.teacherRepository = teacherRepository;
         this.sectionRepository = sectionRepository;
         this.subjectRepository = subjectRepository;
+        this.auditService = auditService;
     }
 
     @Transactional
@@ -77,7 +83,13 @@ public class TeacherAssignmentService {
         );
 
         try {
-            return toResponse(assignmentRepository.saveAndFlush(assignment));
+            TeacherAssignment saved = assignmentRepository.saveAndFlush(assignment);
+            auditService.record("TEACHER_ASSIGNMENT_CREATED", "TEACHER_ASSIGNMENT",
+                    saved.getId().toString(), null,
+                    Map.of("teacherId", teacher.getId(),
+                            "sectionId", section.getId(),
+                            "subjectId", subject.getId()));
+            return toResponse(saved);
         } catch (DataIntegrityViolationException exception) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
@@ -168,10 +180,15 @@ public class TeacherAssignmentService {
             }
         }
 
+        boolean oldActive = assignment.isActive();
         assignment.setActive(active);
 
         try {
-            return toResponse(assignmentRepository.saveAndFlush(assignment));
+            TeacherAssignment saved = assignmentRepository.saveAndFlush(assignment);
+            auditService.record("TEACHER_ASSIGNMENT_STATUS_CHANGED", "TEACHER_ASSIGNMENT",
+                    saved.getId().toString(), Map.of("active", oldActive),
+                    Map.of("active", saved.isActive()));
+            return toResponse(saved);
         } catch (DataIntegrityViolationException exception) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,

@@ -1,10 +1,14 @@
 package com.schoolmanagement.modules.academic.service;
 
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 
 import jakarta.persistence.criteria.Predicate;
+
+import java.util.Map;
+import com.schoolmanagement.common.audit.AuditService;
 
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
@@ -28,18 +32,23 @@ import com.schoolmanagement.modules.academic.entity.StudentStatus;
 @Service
 public class StudentEnrollmentService {
 
+    private static final ZoneId SCHOOL_ZONE = ZoneId.of("Asia/Kolkata");
+
     private final StudentEnrollmentRepository enrollmentRepository;
     private final StudentRepository studentRepository;
     private final SectionRepository sectionRepository;
+    private final AuditService auditService;
 
     public StudentEnrollmentService(
             StudentEnrollmentRepository enrollmentRepository,
             StudentRepository studentRepository,
-            SectionRepository sectionRepository
+            SectionRepository sectionRepository,
+            AuditService auditService
     ) {
         this.enrollmentRepository = enrollmentRepository;
         this.studentRepository = studentRepository;
         this.sectionRepository = sectionRepository;
+        this.auditService = auditService;
     }
 
     @Transactional
@@ -77,7 +86,7 @@ public class StudentEnrollmentService {
 
         LocalDate startDate = request.startDate() != null
                 ? request.startDate()
-                : LocalDate.now();
+                : LocalDate.now(SCHOOL_ZONE);
 
         StudentEnrollment enrollment = new StudentEnrollment(
                 student,
@@ -88,6 +97,11 @@ public class StudentEnrollmentService {
         try {
             StudentEnrollment saved =
                     enrollmentRepository.saveAndFlush(enrollment);
+            auditService.record("STUDENT_ENROLLMENT_CREATED", "STUDENT_ENROLLMENT",
+                    saved.getId().toString(), null,
+                    Map.of("studentId", student.getId(),
+                            "sectionId", section.getId(),
+                            "startDate", saved.getStartDate()));
 
             return toResponse(saved);
 
@@ -106,6 +120,7 @@ public class StudentEnrollmentService {
             Long studentId,
             Long sectionId,
             Boolean active,
+            LocalDate attendanceDate,
             Pageable pageable
     ) {
 
@@ -128,14 +143,21 @@ public class StudentEnrollmentService {
 
             if (active != null) {
                 if (active) {
-                    predicates.add(
-                            cb.isNull(root.get("endDate"))
-                    );
+                    predicates.add(cb.isNull(root.get("endDate")));
                 } else {
-                    predicates.add(
-                            cb.isNotNull(root.get("endDate"))
-                    );
+                    predicates.add(cb.isNotNull(root.get("endDate")));
                 }
+            }
+
+            // Historical registers must use the student's enrollment on the
+            // selected record date, not today's active enrollment.
+            if (attendanceDate != null) {
+                predicates.add(cb.lessThanOrEqualTo(
+                        root.<LocalDate>get("startDate"), attendanceDate));
+                predicates.add(cb.or(
+                        cb.isNull(root.get("endDate")),
+                        cb.greaterThanOrEqualTo(
+                                root.<LocalDate>get("endDate"), attendanceDate)));
             }
 
             return cb.and(predicates.toArray(new Predicate[0]));
@@ -165,7 +187,7 @@ public class StudentEnrollmentService {
             );
         }
 
-        LocalDate endDate = LocalDate.now();
+        LocalDate endDate = LocalDate.now(SCHOOL_ZONE);
 
         if (endDate.isBefore(enrollment.getStartDate())) {
             throw new ResponseStatusException(
@@ -175,8 +197,15 @@ public class StudentEnrollmentService {
         }
 
         enrollment.setEndDate(endDate);
+        StudentEnrollment saved = enrollmentRepository.save(enrollment);
+        auditService.record("STUDENT_ENROLLMENT_ENDED", "STUDENT_ENROLLMENT",
+                saved.getId().toString(),
+                Map.of("studentId", saved.getStudent().getId(),
+                        "sectionId", saved.getSection().getId(),
+                        "startDate", saved.getStartDate()),
+                Map.of("endDate", saved.getEndDate()));
 
-        return toResponse(enrollmentRepository.save(enrollment));
+        return toResponse(saved);
     }
 
     private StudentEnrollment findEnrollment(Long id) {

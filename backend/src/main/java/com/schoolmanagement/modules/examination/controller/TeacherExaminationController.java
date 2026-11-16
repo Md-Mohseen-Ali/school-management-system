@@ -53,8 +53,8 @@ public class TeacherExaminationController {
     ) {
         TeacherProfile teacher = getTeacher(authentication.getName());
 
-        return examinationRepository.findAll().stream()
-                .filter(exam -> subjectsForTeacher(exam, teacher).size() > 0)
+        return examinationRepository.findExaminationsForTeacher(teacher.getId())
+                .stream()
                 .map(this::toResponse)
                 .toList();
     }
@@ -95,15 +95,18 @@ public class TeacherExaminationController {
             Examination examination,
             TeacherProfile teacher
     ) {
+        java.util.Set<Long> assignedSubjectIds = assignmentRepository
+                .findByTeacher_IdAndActiveTrue(teacher.getId())
+                .stream()
+                .filter(assignment -> assignment.getSection().getId()
+                        .equals(examination.getSection().getId()))
+                .map(assignment -> assignment.getSubject().getId())
+                .collect(java.util.stream.Collectors.toSet());
+
         return subjectRepository
                 .findByExamination_IdOrderByExaminationDateAsc(examination.getId())
                 .stream()
-                .filter(subject -> assignmentRepository
-                        .existsByTeacher_IdAndSection_IdAndSubject_IdAndActiveTrue(
-                                teacher.getId(),
-                                examination.getSection().getId(),
-                                subject.getSubject().getId()
-                        ))
+                .filter(subject -> assignedSubjectIds.contains(subject.getSubject().getId()))
                 .toList();
     }
 

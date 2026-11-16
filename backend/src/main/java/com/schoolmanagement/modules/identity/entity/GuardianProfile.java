@@ -19,6 +19,11 @@ public class GuardianProfile {
     protected GuardianProfile() {
     }
 
+    public GuardianProfile(Long userId, String alternatePhone) {
+        this.userId = userId;
+        this.alternatePhone = alternatePhone;
+    }
+
     public Long getId() {
         return id;
     }

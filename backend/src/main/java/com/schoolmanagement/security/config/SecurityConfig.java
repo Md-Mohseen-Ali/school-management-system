@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.http.HttpMethod;
 import jakarta.servlet.http.HttpServletResponse;
 
 import tools.jackson.databind.json.JsonMapper;
@@ -116,6 +117,7 @@ public class SecurityConfig {
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(HttpMethod.POST, "/api/v1/account-requests").permitAll()
                         .requestMatchers(
                                 "/actuator/health",
                                 "/actuator/health/**",

@@ -14,7 +14,9 @@ import org.springframework.web.server.ResponseStatusException;
 
 import com.schoolmanagement.common.audit.AuditService;
 
+import com.schoolmanagement.modules.academic.entity.Student;
 import com.schoolmanagement.modules.academic.repository.StudentGuardianRepository;
+import com.schoolmanagement.modules.academic.repository.StudentRepository;
 
 import com.schoolmanagement.modules.fees.dto.FeePaymentRequest;
 import com.schoolmanagement.modules.fees.dto.FeePaymentResponse;
@@ -44,6 +46,7 @@ public class FeePaymentService {
 
     private final GuardianProfileRepository guardianRepository;
     private final StudentGuardianRepository studentGuardianRepository;
+    private final StudentRepository studentRepository;
     private final AppUserRepository appUserRepository;
 
     private final AuditService auditService;
@@ -54,6 +57,7 @@ public class FeePaymentService {
             FeePaymentRepository paymentRepository,
             GuardianProfileRepository guardianRepository,
             StudentGuardianRepository studentGuardianRepository,
+            StudentRepository studentRepository,
             AppUserRepository appUserRepository,
             AuditService auditService
     ) {
@@ -62,6 +66,7 @@ public class FeePaymentService {
         this.paymentRepository = paymentRepository;
         this.guardianRepository = guardianRepository;
         this.studentGuardianRepository = studentGuardianRepository;
+        this.studentRepository = studentRepository;
         this.appUserRepository = appUserRepository;
         this.auditService = auditService;
     }
@@ -223,6 +228,33 @@ public class FeePaymentService {
 
         return paymentRepository
                 .findByInvoice_IdOrderByCreatedAtDesc(invoiceId)
+                .stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<FeePaymentResponse> getStudentPaymentHistory(
+            Long invoiceId,
+            String authenticatedEmail
+    ) {
+        Student student = studentRepository.findByUser_EmailIgnoreCase(authenticatedEmail)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.FORBIDDEN,
+                        "No student profile is linked to this account"));
+
+        FeeInvoice invoice = invoiceRepository.findById(invoiceId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Invoice not found"));
+        if (invoice.getStatus() != FeeInvoiceStatus.ISSUED
+                || !invoice.getStudent().getId().equals(student.getId())) {
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND,
+                    "Invoice not found for this student");
+        }
+
+        return paymentRepository.findByInvoice_IdOrderByCreatedAtDesc(invoiceId)
                 .stream()
                 .map(this::toResponse)
                 .toList();

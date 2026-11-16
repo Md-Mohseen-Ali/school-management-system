@@ -1,5 +1,8 @@
 package com.schoolmanagement.modules.academic.service;
 
+import java.util.Map;
+
+import com.schoolmanagement.common.audit.AuditService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -16,9 +19,12 @@ import com.schoolmanagement.modules.academic.repository.SchoolClassRepository;
 public class SchoolClassService {
 
     private final SchoolClassRepository schoolClassRepository;
+    private final AuditService auditService;
 
-    public SchoolClassService(SchoolClassRepository schoolClassRepository) {
+    public SchoolClassService(SchoolClassRepository schoolClassRepository,
+                              AuditService auditService) {
         this.schoolClassRepository = schoolClassRepository;
+        this.auditService = auditService;
     }
 
     @Transactional
@@ -39,6 +45,8 @@ public class SchoolClassService {
         );
 
         SchoolClass saved = schoolClassRepository.save(schoolClass);
+        auditService.record("SCHOOL_CLASS_CREATED", "SCHOOL_CLASS", saved.getId().toString(),
+                null, Map.of("name", saved.getName()));
 
         return toResponse(saved);
     }
@@ -94,12 +102,16 @@ public class SchoolClassService {
             );
         }
 
+        String oldName = schoolClass.getName();
         schoolClass.setName(name);
         schoolClass.setDescription(
                 normalizeDescription(request.description())
         );
 
-        return toResponse(schoolClassRepository.save(schoolClass));
+        SchoolClass saved = schoolClassRepository.save(schoolClass);
+        auditService.record("SCHOOL_CLASS_UPDATED", "SCHOOL_CLASS", saved.getId().toString(),
+                Map.of("name", oldName), Map.of("name", saved.getName()));
+        return toResponse(saved);
     }
 
     private String normalizeName(String name) {

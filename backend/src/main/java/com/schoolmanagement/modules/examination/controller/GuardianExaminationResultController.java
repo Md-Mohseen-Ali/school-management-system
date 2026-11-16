@@ -10,7 +10,6 @@ import org.springframework.web.server.ResponseStatusException;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.schoolmanagement.modules.academic.repository.StudentGuardianRepository;
-import com.schoolmanagement.modules.academic.repository.StudentEnrollmentRepository;
 import com.schoolmanagement.modules.examination.dto.ExaminationResponse;
 import com.schoolmanagement.modules.examination.entity.ExaminationStatus;
 import com.schoolmanagement.modules.examination.repository.ExaminationRepository;
@@ -28,20 +27,17 @@ import com.schoolmanagement.modules.identity.repository.GuardianProfileRepositor
 public class GuardianExaminationResultController {
     private final GuardianProfileRepository guardianRepository;
     private final StudentGuardianRepository studentGuardianRepository;
-    private final StudentEnrollmentRepository enrollmentRepository;
     private final ExaminationRepository examinationRepository;
     private final ExaminationResultService resultService;
 
     public GuardianExaminationResultController(
             GuardianProfileRepository guardianRepository,
             StudentGuardianRepository studentGuardianRepository,
-            StudentEnrollmentRepository enrollmentRepository,
             ExaminationRepository examinationRepository,
             ExaminationResultService resultService
     ) {
         this.guardianRepository = guardianRepository;
         this.studentGuardianRepository = studentGuardianRepository;
-        this.enrollmentRepository = enrollmentRepository;
         this.examinationRepository = examinationRepository;
         this.resultService = resultService;
     }
@@ -67,22 +63,51 @@ public class GuardianExaminationResultController {
             return List.of();
         }
 
-        List<Long> sectionIds = enrollmentRepository
-                .findByStudent_IdInAndEndDateIsNull(studentIds)
+        return examinationRepository.findPublishedForStudents(
+                studentIds.stream().distinct().toList(),
+                ExaminationStatus.PUBLISHED
+        )
                 .stream()
-                .map(enrollment -> enrollment.getSection().getId())
-                .distinct()
+                .map(exam -> {
+                    var section = exam.getSection();
+                    return new ExaminationResponse(
+                            exam.getId(),
+                            section.getId(),
+                            section.getSectionName(),
+                            section.getSchoolClass().getName(),
+                            exam.getExamName(),
+                            exam.getAcademicYear(),
+                            exam.getStartDate(),
+                            exam.getEndDate(),
+                            exam.getStatus(),
+                            exam.getCreatedAt()
+                    );
+                })
                 .toList();
+    }
 
-        if (sectionIds.isEmpty()) {
-            return List.of();
+    @GetMapping("/students/{studentId}")
+    public List<ExaminationResponse> getPublishedExaminationsForStudent(
+            @PathVariable Long studentId,
+            Authentication authentication
+    ) {
+        GuardianProfile guardian = guardianRepository
+                .findByUserEmail(authentication.getName())
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.FORBIDDEN,
+                        "Guardian profile not found"
+                ));
+
+        boolean linked = studentGuardianRepository.existsByStudent_IdAndGuardian_Id(
+                studentId, guardian.getId());
+        if (!linked) {
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND,
+                    "Student not found for this guardian");
         }
 
-        return examinationRepository
-                .findBySection_IdInAndStatusOrderByStartDateDesc(
-                        sectionIds,
-                        ExaminationStatus.PUBLISHED
-                )
+        return examinationRepository.findPublishedForStudents(
+                List.of(studentId), ExaminationStatus.PUBLISHED)
                 .stream()
                 .map(exam -> {
                     var section = exam.getSection();

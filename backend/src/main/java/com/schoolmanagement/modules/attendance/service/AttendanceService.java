@@ -6,6 +6,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.Map;
+
+import com.schoolmanagement.common.audit.AuditService;
 
 import jakarta.persistence.criteria.Predicate;
 
@@ -55,6 +58,7 @@ public class AttendanceService {
     private final SectionRepository sectionRepository;
     private final StudentRepository studentRepository;
     private final StudentEnrollmentRepository enrollmentRepository;
+    private final AuditService auditService;
 
     public AttendanceService(
             AttendanceSessionRepository sessionRepository,
@@ -63,7 +67,8 @@ public class AttendanceService {
             TeacherAssignmentRepository assignmentRepository,
             SectionRepository sectionRepository,
             StudentRepository studentRepository,
-            StudentEnrollmentRepository enrollmentRepository
+            StudentEnrollmentRepository enrollmentRepository,
+            AuditService auditService
     ) {
         this.sessionRepository = sessionRepository;
         this.recordRepository = recordRepository;
@@ -72,6 +77,7 @@ public class AttendanceService {
         this.sectionRepository = sectionRepository;
         this.studentRepository = studentRepository;
         this.enrollmentRepository = enrollmentRepository;
+        this.auditService = auditService;
     }
 
     // ------------------------------------------------
@@ -129,9 +135,14 @@ public class AttendanceService {
         );
 
         try {
-            return toSessionResponse(
-                    sessionRepository.saveAndFlush(session)
-            );
+            AttendanceSession saved = sessionRepository.saveAndFlush(session);
+            auditService.record("ATTENDANCE_SESSION_CREATED", "ATTENDANCE_SESSION",
+                    saved.getId().toString(), null,
+                    Map.of("sectionId", section.getId(),
+                            "attendanceDate", saved.getAttendanceDate(),
+                            "sessionCode", saved.getSessionCode(),
+                            "status", saved.getStatus().name()));
+            return toSessionResponse(saved);
         } catch (DataIntegrityViolationException exception) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
@@ -295,13 +306,18 @@ public class AttendanceService {
             );
         }
 
-        return recordRepository
+        List<AttendanceRecordResponse> response = recordRepository
                 .findByAttendanceSession_IdOrderByStudent_AdmissionNumberAsc(
                         sessionId
                 )
                 .stream()
                 .map(this::toRecordResponse)
                 .toList();
+        auditService.record("ATTENDANCE_RECORDS_SAVED", "ATTENDANCE_SESSION",
+                sessionId.toString(), null,
+                Map.of("recordCount", recordsToSave.size(),
+                        "attendanceDate", session.getAttendanceDate()));
+        return response;
     }
 
     // ------------------------------------------------
@@ -388,8 +404,11 @@ public class AttendanceService {
         }
 
         session.submit();
-
-        return toSessionResponse(sessionRepository.save(session));
+        AttendanceSession saved = sessionRepository.save(session);
+        auditService.record("ATTENDANCE_SESSION_SUBMITTED", "ATTENDANCE_SESSION",
+                saved.getId().toString(), Map.of("status", AttendanceSessionStatus.DRAFT.name()),
+                Map.of("status", saved.getStatus().name()));
+        return toSessionResponse(saved);
     }
 
     // ------------------------------------------------
@@ -409,8 +428,11 @@ public class AttendanceService {
         }
 
         session.lock();
-
-        return toSessionResponse(sessionRepository.save(session));
+        AttendanceSession saved = sessionRepository.save(session);
+        auditService.record("ATTENDANCE_SESSION_LOCKED", "ATTENDANCE_SESSION",
+                saved.getId().toString(), Map.of("status", AttendanceSessionStatus.SUBMITTED.name()),
+                Map.of("status", saved.getStatus().name()));
+        return toSessionResponse(saved);
     }
 
     // ------------------------------------------------

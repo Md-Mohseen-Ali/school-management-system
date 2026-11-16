@@ -3,6 +3,9 @@ package com.schoolmanagement.modules.academic.service;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+
+import com.schoolmanagement.common.audit.AuditService;
 
 import jakarta.persistence.criteria.Predicate;
 
@@ -23,9 +26,11 @@ import com.schoolmanagement.modules.academic.repository.SubjectRepository;
 public class SubjectService {
 
     private final SubjectRepository subjectRepository;
+    private final AuditService auditService;
 
-    public SubjectService(SubjectRepository subjectRepository) {
+    public SubjectService(SubjectRepository subjectRepository, AuditService auditService) {
         this.subjectRepository = subjectRepository;
+        this.auditService = auditService;
     }
 
     @Transactional
@@ -37,8 +42,10 @@ public class SubjectService {
         validateDuplicates(subjectCode, name);
 
         Subject subject = new Subject(subjectCode, name);
-
-        return toResponse(subjectRepository.save(subject));
+        Subject saved = subjectRepository.save(subject);
+        auditService.record("SUBJECT_CREATED", "SUBJECT", saved.getId().toString(),
+                null, Map.of("subjectCode", saved.getSubjectCode(), "name", saved.getName()));
+        return toResponse(saved);
     }
 
     @Transactional(readOnly = true)
@@ -120,10 +127,16 @@ public class SubjectService {
             );
         }
 
+        String oldCode = subject.getSubjectCode();
+        String oldName = subject.getName();
         subject.setSubjectCode(subjectCode);
         subject.setName(name);
 
-        return toResponse(subjectRepository.save(subject));
+        Subject saved = subjectRepository.save(subject);
+        auditService.record("SUBJECT_UPDATED", "SUBJECT", saved.getId().toString(),
+                Map.of("subjectCode", oldCode, "name", oldName),
+                Map.of("subjectCode", saved.getSubjectCode(), "name", saved.getName()));
+        return toResponse(saved);
     }
 
     @Transactional
@@ -134,9 +147,13 @@ public class SubjectService {
 
         Subject subject = findSubject(id);
 
+        boolean oldActive = subject.isActive();
         subject.setActive(active);
 
-        return toResponse(subjectRepository.save(subject));
+        Subject saved = subjectRepository.save(subject);
+        auditService.record("SUBJECT_STATUS_CHANGED", "SUBJECT", saved.getId().toString(),
+                Map.of("active", oldActive), Map.of("active", saved.isActive()));
+        return toResponse(saved);
     }
 
     private void validateDuplicates(String subjectCode, String name) {

@@ -2,6 +2,9 @@ package com.schoolmanagement.modules.academic.service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+
+import com.schoolmanagement.common.audit.AuditService;
 
 import jakarta.persistence.criteria.Predicate;
 
@@ -30,15 +33,18 @@ public class StudentGuardianService {
     private final StudentGuardianRepository linkRepository;
     private final StudentRepository studentRepository;
     private final GuardianProfileRepository guardianRepository;
+    private final AuditService auditService;
 
     public StudentGuardianService(
             StudentGuardianRepository linkRepository,
             StudentRepository studentRepository,
-            GuardianProfileRepository guardianRepository
+            GuardianProfileRepository guardianRepository,
+            AuditService auditService
     ) {
         this.linkRepository = linkRepository;
         this.studentRepository = studentRepository;
         this.guardianRepository = guardianRepository;
+        this.auditService = auditService;
     }
 
     @Transactional
@@ -80,7 +86,12 @@ public class StudentGuardianService {
         );
 
         try {
-            return toResponse(linkRepository.saveAndFlush(link));
+            StudentGuardian saved = linkRepository.saveAndFlush(link);
+            auditService.record("STUDENT_GUARDIAN_LINKED", "STUDENT_GUARDIAN",
+                    student.getId() + ":" + guardian.getId(), null,
+                    Map.of("studentId", student.getId(), "guardianId", guardian.getId(),
+                            "relationship", saved.getRelationship(), "primary", saved.isPrimaryGuardian()));
+            return toResponse(saved);
         } catch (DataIntegrityViolationException exception) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
@@ -130,14 +141,21 @@ public class StudentGuardianService {
 
         StudentGuardian link = findLink(studentId, guardianId);
 
+        boolean oldPrimary = link.isPrimaryGuardian();
+        if (oldPrimary == primary) {
+            return toResponse(link);
+        }
         if (primary) {
             clearExistingPrimary(studentId);
         }
-
         link.setPrimaryGuardian(primary);
 
         try {
-            return toResponse(linkRepository.saveAndFlush(link));
+            StudentGuardian saved = linkRepository.saveAndFlush(link);
+            auditService.record("STUDENT_GUARDIAN_PRIMARY_CHANGED", "STUDENT_GUARDIAN",
+                    studentId + ":" + guardianId, Map.of("primary", oldPrimary),
+                    Map.of("primary", saved.isPrimaryGuardian()));
+            return toResponse(saved);
         } catch (DataIntegrityViolationException exception) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
@@ -151,7 +169,9 @@ public class StudentGuardianService {
     public void unlinkGuardian(Long studentId, Long guardianId) {
 
         StudentGuardian link = findLink(studentId, guardianId);
-
+        auditService.record("STUDENT_GUARDIAN_UNLINKED", "STUDENT_GUARDIAN",
+                studentId + ":" + guardianId, Map.of("primary", link.isPrimaryGuardian()),
+                Map.of("linked", false));
         linkRepository.delete(link);
     }
 
@@ -161,7 +181,12 @@ public class StudentGuardianService {
                 linkRepository.findByStudent_Id(studentId);
 
         for (StudentGuardian link : existingLinks) {
-            link.setPrimaryGuardian(false);
+            if (link.isPrimaryGuardian()) {
+                link.setPrimaryGuardian(false);
+                auditService.record("STUDENT_GUARDIAN_PRIMARY_CHANGED", "STUDENT_GUARDIAN",
+                        studentId + ":" + link.getGuardian().getId(),
+                        Map.of("primary", true), Map.of("primary", false));
+            }
         }
 
         linkRepository.saveAll(existingLinks);

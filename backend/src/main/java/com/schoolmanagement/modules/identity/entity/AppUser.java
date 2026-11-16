@@ -1,6 +1,7 @@
 package com.schoolmanagement.modules.identity.entity;
 
 import java.util.HashSet;
+import java.time.Instant;
 import java.util.Set;
 
 import jakarta.persistence.CollectionTable;
@@ -38,6 +39,9 @@ public class AppUser {
 
     @Column(nullable = false)
     private boolean enabled = true;
+
+    @Column(name = "created_at", insertable = false, updatable = false)
+    private Instant createdAt;
 
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(
@@ -98,6 +102,8 @@ public class AppUser {
     public void setEnabled(boolean enabled) {
         this.enabled = enabled;
     }
+
+    public Instant getCreatedAt() { return createdAt; }
 
     public Set<UserRole> getRoles() {
         return roles;

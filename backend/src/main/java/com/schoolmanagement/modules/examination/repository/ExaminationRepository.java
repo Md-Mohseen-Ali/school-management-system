@@ -58,7 +58,7 @@ public interface ExaminationRepository extends
         FROM Examination e
         WHERE EXISTS (
             SELECT es.id
-            FROM ExaminationSubject es, com.schoolmanagement.modules.academic.entity.TeacherAssignment assignment
+            FROM ExaminationSubject es, TeacherAssignment assignment
             WHERE es.examination = e
               AND assignment.section = e.section
               AND assignment.subject = es.subject

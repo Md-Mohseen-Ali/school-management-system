@@ -17,6 +17,7 @@ import com.schoolmanagement.modules.identity.entity.TeacherProfile;
 import com.schoolmanagement.modules.identity.repository.TeacherProfileRepository;
 
 import com.schoolmanagement.modules.academic.repository.TeacherAssignmentRepository;
+import com.schoolmanagement.modules.academic.repository.StudentEnrollmentRepository;
 
 @RestController
 @RequestMapping("/api/v1/attendance/reports")
@@ -26,15 +27,18 @@ public class AttendanceReportController {
     private final AttendanceReportService reportService;
     private final TeacherProfileRepository teacherRepository;
     private final TeacherAssignmentRepository assignmentRepository;
+    private final StudentEnrollmentRepository enrollmentRepository;
 
     public AttendanceReportController(
             AttendanceReportService reportService,
             TeacherProfileRepository teacherRepository,
-            TeacherAssignmentRepository assignmentRepository
+            TeacherAssignmentRepository assignmentRepository,
+            StudentEnrollmentRepository enrollmentRepository
     ) {
         this.reportService = reportService;
         this.teacherRepository = teacherRepository;
         this.assignmentRepository = assignmentRepository;
+        this.enrollmentRepository = enrollmentRepository;
     }
 
     private boolean isAdmin(Authentication authentication) {
@@ -42,6 +46,14 @@ public class AttendanceReportController {
         return authentication.getAuthorities().stream()
                 .anyMatch(authority ->
                         authority.getAuthority().equals("ROLE_ADMIN"));
+    }
+
+    private void validateDateRange(LocalDate fromDate, LocalDate toDate) {
+        if (fromDate == null || toDate == null || toDate.isBefore(fromDate)) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Provide a valid date range; toDate cannot be before fromDate");
+        }
     }
 
     private void verifyTeacherSection(
@@ -96,10 +108,21 @@ public class AttendanceReportController {
                 );
             }
 
+            validateDateRange(fromDate, toDate);
             verifyTeacherSection(
                     authentication.getName(),
                     sectionId
             );
+            boolean enrolledInRequestedSection = enrollmentRepository
+                    .existsEnrollmentInSectionDuringRange(
+                            studentId, sectionId, fromDate, toDate);
+            if (!enrolledInRequestedSection) {
+                // Deliberately hide whether an unrelated student ID exists.
+                throw new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Student report not found for this section"
+                );
+            }
         }
 
         return reportService.getStudentSummary(

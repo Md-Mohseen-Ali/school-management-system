@@ -74,8 +74,9 @@ Status meanings: **Verified** = passed the current feature-branch build or autom
 
 **Verified candidate**
 
-Tested code commit: 2daa58c3c8205edf8cd37d3125dcec66c0eebded  
-Full workflow: https://github.com/Md-Mohseen-Ali/school-management-system/actions/runs/43759111375
+Tested code commit: 9b32e6e11975dde5e7bbf936d07043ba17a91153  
+Full workflow: https://github.com/Md-Mohseen-Ali/school-management-system/actions/runs/43801981326  
+Build workflow: https://github.com/Md-Mohseen-Ali/school-management-system/actions/runs/43801981463
 
 ### Automated API workflow assertions
 
@@ -107,7 +108,7 @@ Full workflow: https://github.com/Md-Mohseen-Ali/school-management-system/action
 - Test data is created only in the disposable GitHub Actions database; the database is destroyed after the run.
 - Previous production read-only smoke test was 40/40 on the earlier deployment baseline. This feature branch has not yet been merged or production-smoke-tested.
 
-The full-stack feature workflow is configured at .github/workflows/isolated-e2e.yml. The production smoke workflow is read-only and is not a substitute for the isolated write-workflow tests.
+The tested code commit is 9b32e6e11975dde5e7bbf936d07043ba17a91153; the later branch commits only synchronize documentation and tracker evidence. The full-stack feature workflow is configured at .github/workflows/isolated-e2e.yml. The production smoke workflow is read-only and is not a substitute for the isolated write-workflow tests.
 
 ## 4. Algions submission deliverables
 
@@ -116,7 +117,7 @@ The full-stack feature workflow is configured at .github/workflows/isolated-e2e.
 | Public source repository | Available |
 | README with stack, setup, environment and demo instructions | Updated |
 | Environment example and secret exclusion | Present |
-| Database migrations and synthetic seed data | Present (Flyway V1–V5) |
+| Database migrations and synthetic seed data | Present (Flyway V1–V6) |
 | ERD/schema document | Added: docs/ERD.md |
 | Consolidated API reference | Added: docs/API_REFERENCE.md |
 | Requirements/test/delivery tracker | This file |

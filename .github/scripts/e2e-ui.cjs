@@ -30,9 +30,24 @@ async function hasNoUiError(page,label) {
 (async()=>{
   const browser = await chromium.launch({headless:true});
   try {
+    const publicContext = await browser.newContext();
+    const publicPage = await publicContext.newPage();
+    publicPage.on("pageerror", error => errors.push("Public request: " + error.message));
+    await publicPage.goto(origin,{waitUntil:"domcontentloaded",timeout:30000});
+    await publicPage.getByRole("button",{name:"Request account access"}).click();
+    await publicPage.getByRole("heading",{name:"Request an account"}).waitFor({state:"visible",timeout:10000});
+    await publicPage.getByLabel("Account type").selectOption("GUARDIAN");
+    await publicPage.getByLabel("Student admission number").waitFor({state:"visible",timeout:10000});
+    await publicPage.getByLabel("Account type").selectOption("TEACHER");
+    await publicPage.getByLabel("Employee code").waitFor({state:"visible",timeout:10000});
+    await publicPage.getByRole("button",{name:"Back"}).click();
+    await publicPage.getByRole("heading",{name:"Sign in to your portal"}).waitFor({state:"visible",timeout:10000});
+    await publicContext.close();
+    process.stdout.write("PASS | Public account request form displays role-specific fields without collecting a password\n");
+
     const admin = await signIn(browser,"admin@school.demo","Admin@2026School","Admin");
     const adminNav = await admin.page.locator(".nav-item").allTextContents();
-    for (const item of ["Students","Classes","Sections","Subjects","Enrollments","Teacher assignments","Family links","People directory","Attendance","Examinations","Fee invoices","Audit trail","My profile"]) {
+    for (const item of ["Students","Classes","Sections","Subjects","Enrollments","Teacher assignments","Family links","People directory","Access requests","Attendance","Examinations","Fee invoices","Audit trail","My profile"]) {
       assert(adminNav.some(x=>x.includes(item)),"Admin navigation missing "+item);
     }
     for (const label of ["Students","Classes","Sections","Subjects","Enrollments","Teacher assignments","Family links"]) {
@@ -53,6 +68,9 @@ async function hasNoUiError(page,label) {
     await navigate(admin.page,"People directory");
     await admin.page.getByRole("tab",{name:/Teachers/}).waitFor({state:"visible",timeout:15000});
     await hasNoUiError(admin.page,"Admin people directory");
+    await navigate(admin.page,"Access requests");
+    await admin.page.getByRole("tab",{name:"Pending"}).waitFor({state:"visible",timeout:15000});
+    await hasNoUiError(admin.page,"Admin account request queue");
     await navigate(admin.page,"Audit trail");
     await hasNoUiError(admin.page,"Admin audit workspace");
     await navigate(admin.page,"My profile");
@@ -127,6 +145,9 @@ async function hasNoUiError(page,label) {
     await student.page.getByRole("button",{name:/View my report card/}).click();
     await student.page.getByText("PERCENTAGE",{exact:true}).waitFor({state:"visible",timeout:15000});
     await hasNoUiError(student.page,"Student results workspace");
+    await navigate(student.page,"My academics");
+    await student.page.getByText("My subjects and teachers",{exact:true}).waitFor({state:"visible",timeout:15000});
+    await hasNoUiError(student.page,"Student academic workspace");
     await navigate(student.page,"My attendance");
     await student.page.getByText(/Attendance register/i).waitFor({state:"visible",timeout:15000});
     await hasNoUiError(student.page,"Student attendance workspace");
@@ -137,7 +158,7 @@ async function hasNoUiError(page,label) {
     await student.page.getByText("Student details",{exact:true}).waitFor({state:"visible",timeout:15000});
     await hasNoUiError(student.page,"Student account profile");
     await student.context.close();
-    process.stdout.write("PASS | Student UI results, attendance, fees and profile\n");
+    process.stdout.write("PASS | Student UI academics, results, attendance, fees and profile\n");
 
     assert.equal(errors.length,0,"Browser JavaScript errors: "+errors.join(" | "));
     process.stdout.write("PASS | No uncaught browser JavaScript exceptions\n");

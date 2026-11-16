@@ -461,7 +461,6 @@ function ProfilePage({ user, roles, token }) {
           {field('Section',details.sectionName)}
           {field('Academic year',details.academicYear)}
           {field('Enrollment start',details.enrollmentStartDate)}
-          {field('Account created',profile?.createdAt ? new Date(profile.createdAt).toLocaleDateString('en-IN') : null)}
         </div>
       </section>}
 

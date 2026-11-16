@@ -117,6 +117,7 @@ try {
     record("Admin JWT resolves ADMIN role", Array.isArray(roles) && roles.includes("ROLE_ADMIN"),
       Array.isArray(roles) && roles.includes("ROLE_ADMIN") ? "role matched" : "role not found");
     await expectedStatus("Admin can read student directory", "/api/v1/academic/students?page=0&size=1", admin, 200);
+    await expectedStatus("Admin can read account access request queue (V7 migration)", "/api/v1/account-requests?status=PENDING", admin, 200);
     await expectedStatus("Admin is blocked from teacher roster", "/api/v1/teacher/roster/sections", admin, 403);
     await expectedStatus("Admin is blocked from guardian student endpoint", "/api/v1/guardian/students", admin, 403);
     await expectedStatus("Admin is blocked from student results endpoint", "/api/v1/student/examinations", admin, 403);
@@ -168,6 +169,7 @@ try {
     record("Student JWT resolves STUDENT role", Array.isArray(roles) && roles.includes("ROLE_STUDENT"),
       Array.isArray(roles) && roles.includes("ROLE_STUDENT") ? "role matched" : "role not found");
     await expectedStatus("Student can read own published examination list", "/api/v1/student/examinations", student, 200);
+    await expectedStatus("Student can read own academic workspace", "/api/v1/student/academics", student, 200);
     await expectedStatus("Student is blocked from admin student directory", "/api/v1/academic/students?page=0&size=1", student, 403);
     await expectedStatus("Student is blocked from guardian student endpoint", "/api/v1/guardian/students", student, 403);
     await expectedStatus("Student is blocked from teacher roster", "/api/v1/teacher/roster/sections", student, 403);

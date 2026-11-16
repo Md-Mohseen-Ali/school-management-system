@@ -67,6 +67,12 @@ try {
     record("Vercel production bundle loads", asset.status === 200, "HTTP " + asset.status);
     record("Frontend bundle targets deployed Render API", asset.status === 200 && assetText.includes(base),
       asset.status === 200 && assetText.includes(base) ? "API base URL found" : "API base URL not found in first JS bundle");
+    record("Vercel bundle includes Access requests portal", asset.status === 200 && assetText.includes("Access requests"),
+      asset.status === 200 && assetText.includes("Access requests") ? "Admin UI marker found" : "Admin UI marker missing");
+    record("Vercel bundle includes My academics student workspace", asset.status === 200 && assetText.includes("My academics"),
+      asset.status === 200 && assetText.includes("My academics") ? "Student UI marker found" : "Student UI marker missing");
+    record("Vercel bundle includes public account request screen", asset.status === 200 && assetText.includes("Request an account"),
+      asset.status === 200 && assetText.includes("Request an account") ? "Public request UI marker found" : "Public request UI marker missing");
   } else {
     record("Vercel production bundle loads", false, "could not locate frontend JS bundle");
     record("Frontend bundle targets deployed Render API", false, "could not inspect frontend JS bundle");

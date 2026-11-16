@@ -96,5 +96,33 @@ async function run() {
   check("Teacher report returns student-level aggregates",Array.isArray(classReport.students));
   await expect("Teacher cannot report on unassigned section",
     await api(teacher,"/api/v1/attendance/reports/sections/999999?fromDate="+fromDate+"&toDate="+date),403);
+
+  // A real student without an enrollment in the teacher's assigned section
+  // must not be exposed through the individual summary endpoint.
+  const unrelatedStudent = await expect("Admin creates student outside teacher's section",
+    await api(admin,"/api/v1/academic/students","POST",{
+      admissionNumber:"E2E-PRIVATE-"+Date.now(),firstName:"Private",lastName:"Student",
+      admissionDate:date,email:"private-"+Date.now()+"@example.com",
+      initialPassword:"Private@2026School"
+    }),201);
+  await expect("Teacher cannot inspect an unrelated student's attendance summary",
+    await api(teacher,"/api/v1/attendance/reports/students/"+unrelatedStudent.id+
+      "?sectionId="+first.id+"&fromDate="+fromDate+"&toDate="+date),404);
+
+  // Historical exam discovery must remain independent of current enrollment.
+  const enrollmentPage = await expect("Admin reads student's active enrollment before transfer",
+    await api(admin,"/api/v1/academic/enrollments?studentId="+ownChild.id+"&active=true&page=0&size=10"),200);
+  const activeEnrollment = rows(enrollmentPage)[0];
+  need(activeEnrollment && activeEnrollment.id,"Student active enrollment not found for transfer regression test");
+  await expect("Admin ends student's current enrollment after published exam",
+    await api(admin,"/api/v1/academic/enrollments/"+activeEnrollment.id+"/end","PATCH"),200);
+  const studentHistoricalExams = await expect("Student still sees exams taken before leaving the section",
+    await api(student,"/api/v1/student/examinations"),200);
+  check("Published historical examination remains visible to the student",
+    rows(studentHistoricalExams).some(x=>String(x.examName||"").startsWith("E2E Results")));
+  const guardianHistoricalExams = await expect("Guardian still sees linked child's historical exams",
+    await api(guardian,"/api/v1/guardian/examinations/students/"+ownChild.id),200);
+  check("Published historical examination remains visible to the linked guardian",
+    rows(guardianHistoricalExams).some(x=>String(x.examName||"").startsWith("E2E Results")));
 }
 run().catch(e=>check("Self-service E2E exception",false,e?.message||String(e))).finally(report);

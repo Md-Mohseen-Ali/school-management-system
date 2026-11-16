@@ -75,7 +75,7 @@ public class AccountAccessRequest {
     @Version
     private long version;
 
-    protected AccountAccessRequest() {
+    public AccountAccessRequest() {
     }
 
     @PrePersist

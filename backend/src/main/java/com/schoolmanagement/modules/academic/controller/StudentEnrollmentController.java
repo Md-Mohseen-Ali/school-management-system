@@ -1,5 +1,7 @@
 package com.schoolmanagement.modules.academic.controller;
 
+import java.time.LocalDate;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
@@ -37,6 +39,7 @@ public class StudentEnrollmentController {
             @RequestParam(required = false) Long studentId,
             @RequestParam(required = false) Long sectionId,
             @RequestParam(required = false) Boolean active,
+            @RequestParam(required = false) LocalDate attendanceDate,
             @PageableDefault(size = 10, sort = "startDate")
             Pageable pageable
     ) {
@@ -44,6 +47,7 @@ public class StudentEnrollmentController {
                 studentId,
                 sectionId,
                 active,
+                attendanceDate,
                 pageable
         );
     }

@@ -29,8 +29,8 @@ CREATE TABLE account_access_requests (
 CREATE INDEX idx_account_access_requests_status_created
     ON account_access_requests(status, created_at DESC);
 
-CREATE UNIQUE INDEX uq_account_access_requests_pending_email_role
-    ON account_access_requests(LOWER(email), requested_role)
+CREATE UNIQUE INDEX uq_account_access_requests_pending_email
+    ON account_access_requests(LOWER(email))
     WHERE status = 'PENDING';
 
 COMMENT ON TABLE account_access_requests IS

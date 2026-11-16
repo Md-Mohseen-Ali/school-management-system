@@ -23,7 +23,6 @@ import com.schoolmanagement.modules.identity.dto.*;
 import com.schoolmanagement.modules.identity.entity.*;
 import com.schoolmanagement.modules.identity.repository.AccountAccessRequestRepository;
 import com.schoolmanagement.modules.identity.repository.AppUserRepository;
-import com.schoolmanagement.modules.identity.repository.GuardianProfileRepository;
 
 @Service
 public class AccountAccessRequestService {
@@ -33,7 +32,6 @@ public class AccountAccessRequestService {
     private final AccountAccessRequestRepository requestRepository;
     private final AppUserRepository userRepository;
     private final StudentRepository studentRepository;
-    private final GuardianProfileRepository guardianRepository;
     private final IdentityAccountService identityAccountService;
     private final StudentService studentService;
     private final StudentGuardianService studentGuardianService;
@@ -43,7 +41,6 @@ public class AccountAccessRequestService {
             AccountAccessRequestRepository requestRepository,
             AppUserRepository userRepository,
             StudentRepository studentRepository,
-            GuardianProfileRepository guardianRepository,
             IdentityAccountService identityAccountService,
             StudentService studentService,
             StudentGuardianService studentGuardianService,
@@ -51,7 +48,6 @@ public class AccountAccessRequestService {
         this.requestRepository = requestRepository;
         this.userRepository = userRepository;
         this.studentRepository = studentRepository;
-        this.guardianRepository = guardianRepository;
         this.identityAccountService = identityAccountService;
         this.studentService = studentService;
         this.studentGuardianService = studentGuardianService;
@@ -67,14 +63,13 @@ public class AccountAccessRequestService {
         }
 
         String email = input.email().trim().toLowerCase(Locale.ROOT);
-        if (userRepository.existsByEmailIgnoreCase(email)) {
+        if (userRepository.existsByEmailIgnoreCase(email)
+                || requestRepository.existsByEmailIgnoreCaseAndStatus(
+                        email, AccountRequestStatus.PENDING)) {
+            // Do not reveal whether an address belongs to an account or to
+            // another pending request.
             throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "An account already exists for this email address");
-        }
-        if (requestRepository.existsByEmailIgnoreCaseAndRequestedRoleAndStatus(
-                email, role, AccountRequestStatus.PENDING)) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "A pending request already exists for this email and account type");
+                    "A request cannot be submitted for the supplied email address");
         }
 
         validateRoleFields(input, role);

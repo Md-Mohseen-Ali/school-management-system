@@ -11,12 +11,10 @@ import org.springframework.data.repository.query.Param;
 
 import com.schoolmanagement.modules.identity.entity.AccountAccessRequest;
 import com.schoolmanagement.modules.identity.entity.AccountRequestStatus;
-import com.schoolmanagement.modules.identity.entity.UserRole;
 
 public interface AccountAccessRequestRepository extends JpaRepository<AccountAccessRequest, Long> {
 
-    boolean existsByEmailIgnoreCaseAndRequestedRoleAndStatus(
-            String email, UserRole requestedRole, AccountRequestStatus status);
+    boolean existsByEmailIgnoreCaseAndStatus(String email, AccountRequestStatus status);
 
     List<AccountAccessRequest> findByStatusOrderByCreatedAtDesc(AccountRequestStatus status);
 

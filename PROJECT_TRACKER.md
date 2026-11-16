@@ -11,17 +11,17 @@ Status meanings: **Verified** = passed the current feature-branch build or autom
 
 | Requirement | Implementation | Status |
 |---|---|---|
-| Admin manages students, guardians, teachers, classes, sections, subjects, assignments and enrollment | CRUD, relationships, new Teacher/Guardian account provisioning and student account created alongside student admission | Verified by branch build and account-provisioning E2E |
+| Admin manages students, guardians, teachers, classes, sections, subjects, assignments and enrollment | CRUD, direct provisioning and public requests for all three portal roles, with admin-only approve/reject | Verified by current API/browser E2E |
 | Daily attendance, duplicate prevention, student/class summaries | Teacher roster scoped to assignment and enrollment date; session DRAFT → SUBMITTED → LOCKED; student, guardian and teacher reports | Verified: attendance and self-service E2E |
 | Exams, marks, grading and report cards | Exam setup/scheduling; teacher-assigned marks; grade bands; complete/publish transitions; admin/student/guardian report cards | Verified: examination E2E |
 | Fees, invoices, payments and balances | Draft/itemize/issue/cancel; simulated-only payment; idempotency; admin/guardian payment history; student read-only invoice/payment history | Verified: fee and student payment-history E2E |
 | RBAC and data privacy | Role-level route security, teacher assignment checks, teacher individual-report enrollment checks, student self-ownership and guardian/student relationship checks | Verified by negative, cross-role and unrelated-student report E2E tests |
 | Reporting and audit | Admin audit workspace, class attendance reports, student and guardian summaries; structured audit events across academic, attendance, examination, grading, identity and financial mutations | Verified by audit-event assertions in attendance, exam, fee and self-service E2E suites |
-| User-friendly role workspaces | Separate Admin, Teacher, Guardian and Student navigation, role-specific dashboard metrics and quick links | Verified by Chromium role-workspace test |
-| Profile screen | No raw JSON display; real authenticated account identity, contact, role and role-specific school/family details | Verified by Chromium role-workspace test |
+| User-friendly role workspaces | Admin request queue and student current class/section, active subjects and assigned teacher workspace alongside attendance, fees and results | Verified by current Chromium workflow |
+| Profile screen | Account identity/contact/status plus student enrollment, teacher assignments, guardian child/class context and admin management scope | Verified by API and Chromium E2E |
 | Search/filter/pagination | Existing academic/operational search and paging; student/guardian attendance date filters; invoice search | Core paths exercised; exhaustive filter-combination tests still pending |
 | Accessible/responsive UI | Semantic forms, accessible labels and responsive styles added for profiles, people directory and portals | Implemented; dedicated viewport/screen-reader audit pending |
-| Database integrity and migrations | PostgreSQL schema managed by Flyway; uniqueness, FK, indexes and service-level business constraints | Verified by isolated PostgreSQL startup/migration and workflow E2E |
+| Database integrity and migrations | PostgreSQL schema via Flyway; V7 adds separate access requests, reviewer relation and one-pending-email index | Verified by isolated V1–V7 startup/E2E |
 | Documentation | README, ERD and consolidated API reference | Added; final editorial review pending |
 
 ## 2. Role journey tracker
@@ -34,6 +34,7 @@ Status meanings: **Verified** = passed the current feature-branch build or autom
 - [x] Register a student with a linked student login.
 - [x] Attendance, examination, grading, invoices, simulated payments and audit trail.
 - [x] People directory and expanded administrator profile.
+- [x] Review public teacher, guardian and student access requests; approve/reject and provision only after verification.
 
 ### Teacher
 - [x] See only assigned sections and exams.
@@ -56,8 +57,10 @@ Status meanings: **Verified** = passed the current feature-branch build or autom
 - [x] View own issued invoice totals, paid amount, balance and invoice items.
 - [x] View own simulated payment history (read-only).
 - [x] View admission identity, class, section and enrollment in profile.
+- [x] View the current academic overview and subject/teacher directory.
 - [x] New student admission creates a login that can authenticate and load the self-service profile.
 - [x] Student workspace browser checks.
+- [x] View current class/section, active subjects and assigned teacher contacts in My academics.
 
 ## 2.1 Correctness and audit hardening (2026-11-16)
 
@@ -70,13 +73,26 @@ Status meanings: **Verified** = passed the current feature-branch build or autom
 - [x] Teacher examination discovery no longer scans every examination and executes per-examination/per-subject assignment checks; the repository query scopes directly to active assigned subjects.
 - [x] Regression E2E tests cover unrelated-student report access, historical attendance roster, historical student/guardian exam discovery and audit event persistence.
 
+
+## 2.2 Account access and student learning workspace (2026-11-16)
+
+- [x] Public login screen offers **Request account access** for TEACHER, GUARDIAN and STUDENT. It collects role-specific identity/admission details and never asks for a password.
+- [x] Public submissions remain untrusted PENDING rows in `account_access_requests`; no user/profile/login exists before admin approval. ADMIN requests are rejected.
+- [x] Admin-only Access requests workspace supports Pending, Approved, Rejected and All filters, approve/reject actions, review notes and initial password input only during approval.
+- [x] Approval creates teacher identity, guardian identity plus a verified student relationship, or student admission plus login inside one transaction. Invalid guardian admission rolls back the profile and login. Admin still enrolls new students.
+- [x] Duplicate/pending email conflicts use the same public response to reduce account enumeration, and a partial unique index allows one pending request per email across roles.
+- [x] Student My academics shows current enrollment, class, section, academic year, active subjects and assigned teacher name/email. Existing My attendance, My fees and My results remain available.
+- [x] Profiles expose account details and role-specific student enrollment, teacher assignments (including inactive teacher identity/status), guardian child/class context and admin management scope.
+- [x] API/browser E2E covers request transitions, role restrictions, credential non-disclosure, transactional rollback, student academic scoping and all four profiles.
+- [!] No email/OTP verification, CAPTCHA, application rate limiter, public status lookup, invitation mail, password reset or profile-edit workflow is included. Verify identities off-band and add infrastructure-level rate limiting before public internet exposure.
+
 ## 3. Current feature-branch verification
 
-**Verified candidate**
+**Verified current candidate**
 
-Tested code commit: 9b32e6e11975dde5e7bbf936d07043ba17a91153  
-Full workflow: https://github.com/Md-Mohseen-Ali/school-management-system/actions/runs/43801981326  
-Build workflow: https://github.com/Md-Mohseen-Ali/school-management-system/actions/runs/43801981463
+Tested code and test commit: f94bcc38fdca4478b43ed71f11ebd3d1047d53c2  
+Full-stack workflow: https://github.com/Md-Mohseen-Ali/school-management-system/actions/runs/43805660743  
+Build workflow: https://github.com/Md-Mohseen-Ali/school-management-system/actions/runs/43805660708
 
 ### Automated API workflow assertions
 
@@ -85,30 +101,31 @@ Build workflow: https://github.com/Md-Mohseen-Ali/school-management-system/actio
 | Attendance lifecycle, date-aware historical roster and attendance audit | 33 / 33 |
 | Examination, report cards, historical visibility and examination audit | 57 / 57 |
 | Fees and simulated payments | 37 / 37 |
-| Student/guardian/teacher self-service, privacy, historical exams and academic audit | 55 / 55 |
-| Teacher/guardian/student account provisioning | 16 / 16 |
+| Student/guardian/teacher self-service, privacy, history, profiles and student academics | 61 / 61 |
+| Teacher/guardian/student direct account provisioning | 16 / 16 |
+| Public account requests, administrator decisions and transactional rollback | 40 / 40 |
 | Student payment history | 5 / 5 |
-| **Total API assertions** | **203 / 203** |
+| **Total API assertions** | **249 / 249** |
 
 ### Browser checks
 
-34 browser assertions passed across the four roles. They covered role sign-in, visible navigation, workspace loading, selected report-card/payment-history interactions and profile views. The test also confirmed no uncaught browser JavaScript exceptions.
+37 browser checks passed across the public request form and four roles. They cover role-specific request fields, the admin request queue, account/profile workspaces, student academics, results, attendance and fees. No uncaught browser JavaScript exceptions were reported.
 
-- Admin: student/class/section/subject/enrollment/assignment/family-link/attendance/exam/fee/people/audit/profile workspaces.
+- Admin: student/class/section/subject/enrollment/assignment/family-link/attendance/exam/fee/people/access-request/audit/profile workspaces.
 - Teacher: attendance, examinations, assigned-class reports and profile.
 - Guardian: linked-student report card, invoice payment history, student attendance and family profile.
-- Student: published results, own attendance, own fees/payment history workspace and student profile.
+- Student: current academics/subjects/teachers, published results, own attendance, own fees/payment history workspace and student profile.
 
 ### Build and environment
 
 - Backend Maven package/compile: passed.
-- Flyway migrations V1–V6 against disposable PostgreSQL 17: passed.
+- Flyway migrations V1–V7 against disposable PostgreSQL 17: passed.
 - Frontend Vite production build: passed.
 - Chromium installation and browser run: passed.
 - Test data is created only in the disposable GitHub Actions database; the database is destroyed after the run.
 - Previous production read-only smoke test was 40/40 on the earlier deployment baseline. This feature branch has not yet been merged or production-smoke-tested.
 
-The tested code commit is 9b32e6e11975dde5e7bbf936d07043ba17a91153; the later branch commits only synchronize documentation and tracker evidence. The full-stack feature workflow is configured at .github/workflows/isolated-e2e.yml. The production smoke workflow is read-only and is not a substitute for the isolated write-workflow tests.
+The tested code and test commit is f94bcc38fdca4478b43ed71f11ebd3d1047d53c2. The tracker synchronization after it is documentation-only. The full-stack workflow is configured at .github/workflows/isolated-e2e.yml; production smoke tests are read-only and not a substitute for this isolated write workflow.
 
 ## 4. Algions submission deliverables
 
@@ -117,7 +134,7 @@ The tested code commit is 9b32e6e11975dde5e7bbf936d07043ba17a91153; the later br
 | Public source repository | Available |
 | README with stack, setup, environment and demo instructions | Updated |
 | Environment example and secret exclusion | Present |
-| Database migrations and synthetic seed data | Present (Flyway V1–V6) |
+| Database migrations and synthetic seed data | Present (Flyway V1–V7) |
 | ERD/schema document | Added: docs/ERD.md |
 | Consolidated API reference | Added: docs/API_REFERENCE.md |
 | Requirements/test/delivery tracker | This file |
@@ -132,9 +149,10 @@ The tested code commit is 9b32e6e11975dde5e7bbf936d07043ba17a91153; the later br
 
 - Payment handling is simulated only. No real payment gateway or transfer is integrated.
 - Student invoices and payment history are read-only; guardian or administrator handles recording simulated payments.
-- Admin provisions teacher/guardian accounts and communicates the initial password securely. Passwords are BCrypt hashed and are never returned after creation.
-- Student admission requires login credentials. The administrator must communicate the initial password securely.
-- No email-delivery, self-service password reset or profile-edit workflow is included. Account corrections are handled by the school administrator.
+- Admin may directly provision teacher/guardian accounts or approve public requests. No login is created before approval; the administrator supplies the initial password and shares it securely. Passwords are BCrypt hashed and never returned.
+- Student approval creates the admission and login. Admin must separately enroll the student into a class/section and share initial credentials securely.
+- No email/OTP verification, public request-status lookup, email delivery, self-service password reset or profile-edit workflow is included. Applicants contact the school office for status updates; profile corrections are handled by the administrator.
+- There is no built-in CAPTCHA or application rate limiter on the public request route. Add edge/WAF rate limiting and off-band identity verification before internet-facing production use.
 - Teacher accounts still need active section/subject assignments; guardians need student links before family data appears.
 - No production data is modified by the isolated E2E workflow.
 - Responsive CSS has been added; dedicated mobile/tablet viewport, screen-reader and keyboard-only audits are still recommended.
@@ -144,8 +162,9 @@ The tested code commit is 9b32e6e11975dde5e7bbf936d07043ba17a91153; the later br
 - [x] Feature work isolated from main.
 - [x] Backend build and isolated PostgreSQL startup.
 - [x] Frontend production build.
-- [x] All six API E2E suites pass on the hardened revision (203/203 assertions).
-- [x] Browser tests pass for all four roles (34/34 assertions).
+- [x] All seven API E2E suites pass on the current candidate (249/249 assertions).
+- [x] Public request form, admin request queue and all four role workspaces pass 37 browser checks.
+- [x] Flyway V1–V7 startup/migration and backend compile pass on the current candidate.
 - [x] Test logs reviewed and test-selector failures corrected.
 - [x] ERD and API reference added.
 - [x] Tracker updated with exact test evidence.

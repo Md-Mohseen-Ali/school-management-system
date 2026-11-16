@@ -69,7 +69,7 @@ export function AttendanceWorkspace({ token, roles = [] }) {
     try {
       const rosterPath = canMark
         ? '/api/v1/teacher/roster?sectionId=' + encodeURIComponent(session.sectionId) + '&attendanceDate=' + encodeURIComponent(session.attendanceDate)
-        : '/api/v1/academic/enrollments?sectionId=' + encodeURIComponent(session.sectionId) + '&active=true';
+        : '/api/v1/academic/enrollments?sectionId=' + encodeURIComponent(session.sectionId) + '&attendanceDate=' + encodeURIComponent(session.attendanceDate) + '&size=100';
       const [roster, existing] = await Promise.all([
         apiRequest(rosterPath, { token }),
         apiRequest('/api/v1/attendance/sessions/' + session.id + '/records', { token }),
@@ -328,7 +328,7 @@ export function ExaminationsWorkspace({ token, roles = [] }) {
     const date=subject.examinationDate || selectedExam.startDate;
     try {
       const rosterPath=admin
-        ? '/api/v1/academic/enrollments?sectionId='+sectionId+'&active=true&size=100'
+        ? '/api/v1/academic/enrollments?sectionId='+sectionId+'&attendanceDate='+encodeURIComponent(date)+'&size=100'
         : '/api/v1/teacher/roster?sectionId='+sectionId+'&attendanceDate='+date;
       const [rosterData,existingData]=await Promise.all([
         apiRequest(rosterPath,{token}),

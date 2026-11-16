@@ -133,7 +133,7 @@ public class AuthController {
             });
         } else if (roles.contains("ROLE_TEACHER")) {
             profile.put("type", "TEACHER");
-            teacherRepository.findActiveByUserEmail(user.getEmail()).ifPresent(teacher -> {
+            teacherRepository.findByUserId(user.getId()).ifPresent(teacher -> {
                 profile.put("teacherId", teacher.getId());
                 profile.put("employeeCode", teacher.getEmployeeCode());
                 profile.put("hireDate", teacher.getHireDate());

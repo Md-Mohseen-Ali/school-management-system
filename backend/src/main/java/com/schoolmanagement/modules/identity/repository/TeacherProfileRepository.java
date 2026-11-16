@@ -16,6 +16,8 @@ public interface TeacherProfileRepository
 
     boolean existsByEmployeeCodeIgnoreCase(String employeeCode);
 
+    Optional<TeacherProfile> findByUserId(Long userId);
+
     @Query("""
         SELECT t
         FROM TeacherProfile t, AppUser u

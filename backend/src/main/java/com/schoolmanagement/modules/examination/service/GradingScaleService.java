@@ -2,6 +2,9 @@ package com.schoolmanagement.modules.examination.service;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
+
+import com.schoolmanagement.common.audit.AuditService;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -17,11 +20,14 @@ import com.schoolmanagement.modules.examination.repository.GradingScaleRepositor
 public class GradingScaleService {
 
     private final GradingScaleRepository gradingScaleRepository;
+    private final AuditService auditService;
 
     public GradingScaleService(
-            GradingScaleRepository gradingScaleRepository
+            GradingScaleRepository gradingScaleRepository,
+            AuditService auditService
     ) {
         this.gradingScaleRepository = gradingScaleRepository;
+        this.auditService = auditService;
     }
 
     @Transactional
@@ -77,7 +83,13 @@ public class GradingScaleService {
                         : request.remarks().trim()
         );
 
-        return toResponse(gradingScaleRepository.save(gradingScale));
+        GradingScale saved = gradingScaleRepository.save(gradingScale);
+        auditService.record("GRADING_SCALE_CREATED", "GRADING_SCALE", saved.getId().toString(),
+                null, Map.of("academicYear", saved.getAcademicYear(),
+                        "grade", saved.getGrade(),
+                        "minPercentage", saved.getMinPercentage(),
+                        "maxPercentage", saved.getMaxPercentage()));
+        return toResponse(saved);
     }
 
     @Transactional(readOnly = true)

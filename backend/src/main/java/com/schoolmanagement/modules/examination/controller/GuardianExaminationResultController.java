@@ -10,7 +10,6 @@ import org.springframework.web.server.ResponseStatusException;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.schoolmanagement.modules.academic.repository.StudentGuardianRepository;
-import com.schoolmanagement.modules.academic.repository.StudentEnrollmentRepository;
 import com.schoolmanagement.modules.examination.dto.ExaminationResponse;
 import com.schoolmanagement.modules.examination.entity.ExaminationStatus;
 import com.schoolmanagement.modules.examination.repository.ExaminationRepository;
@@ -28,20 +27,17 @@ import com.schoolmanagement.modules.identity.repository.GuardianProfileRepositor
 public class GuardianExaminationResultController {
     private final GuardianProfileRepository guardianRepository;
     private final StudentGuardianRepository studentGuardianRepository;
-    private final StudentEnrollmentRepository enrollmentRepository;
     private final ExaminationRepository examinationRepository;
     private final ExaminationResultService resultService;
 
     public GuardianExaminationResultController(
             GuardianProfileRepository guardianRepository,
             StudentGuardianRepository studentGuardianRepository,
-            StudentEnrollmentRepository enrollmentRepository,
             ExaminationRepository examinationRepository,
             ExaminationResultService resultService
     ) {
         this.guardianRepository = guardianRepository;
         this.studentGuardianRepository = studentGuardianRepository;
-        this.enrollmentRepository = enrollmentRepository;
         this.examinationRepository = examinationRepository;
         this.resultService = resultService;
     }
@@ -67,22 +63,10 @@ public class GuardianExaminationResultController {
             return List.of();
         }
 
-        List<Long> sectionIds = enrollmentRepository
-                .findByStudent_IdInAndEndDateIsNull(studentIds)
-                .stream()
-                .map(enrollment -> enrollment.getSection().getId())
-                .distinct()
-                .toList();
-
-        if (sectionIds.isEmpty()) {
-            return List.of();
-        }
-
-        return examinationRepository
-                .findBySection_IdInAndStatusOrderByStartDateDesc(
-                        sectionIds,
-                        ExaminationStatus.PUBLISHED
-                )
+        return examinationRepository.findPublishedForStudents(
+                studentIds.stream().distinct().toList(),
+                ExaminationStatus.PUBLISHED
+        )
                 .stream()
                 .map(exam -> {
                     var section = exam.getSection();
@@ -122,19 +106,8 @@ public class GuardianExaminationResultController {
                     "Student not found for this guardian");
         }
 
-        List<Long> sectionIds = enrollmentRepository
-                .findByStudent_IdInAndEndDateIsNull(List.of(studentId))
-                .stream()
-                .map(enrollment -> enrollment.getSection().getId())
-                .distinct()
-                .toList();
-        if (sectionIds.isEmpty()) {
-            return List.of();
-        }
-
-        return examinationRepository
-                .findBySection_IdInAndStatusOrderByStartDateDesc(
-                        sectionIds, ExaminationStatus.PUBLISHED)
+        return examinationRepository.findPublishedForStudents(
+                List.of(studentId), ExaminationStatus.PUBLISHED)
                 .stream()
                 .map(exam -> {
                     var section = exam.getSection();

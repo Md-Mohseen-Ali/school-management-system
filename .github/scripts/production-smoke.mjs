@@ -20,6 +20,32 @@ async function call(path, options = {}) {
 async function readJson(response) {
   try { return await response.json(); } catch { return null; }
 }
+async function collectJsBundle(firstUrl, firstText) {
+  const chunks = [firstText];
+  const seen = new Set([firstUrl]);
+  const queue = [];
+  const enqueue = text => {
+    for (const match of text.matchAll(/["']([^"']+\\.js(?:\\?[^"']*)?)["']/g)) {
+      queue.push(match[1]);
+    }
+  };
+  enqueue(firstText);
+  while (queue.length > 0 && seen.size < 30) {
+    const ref = queue.shift();
+    let url;
+    try { url = new URL(ref, firstUrl).toString(); } catch { continue; }
+    if (seen.has(url)) continue;
+    seen.add(url);
+    try {
+      const response = await fetch(url, { signal: AbortSignal.timeout(12000) });
+      if (!response.ok) continue;
+      const text = await response.text();
+      chunks.push(text);
+      enqueue(text);
+    } catch {}
+  }
+  return chunks.join("\\n");
+}
 
 async function login(email, password, roleLabel) {
   const response = await call("/api/v1/auth/login", {
@@ -64,15 +90,16 @@ try {
     const assetUrl = new URL(scriptPaths[0], frontendOrigin).toString();
     const asset = await fetch(assetUrl, { signal: AbortSignal.timeout(20000) });
     const assetText = await asset.text();
+    const productionAssetSet = await collectJsBundle(assetUrl, assetText);
     record("Vercel production bundle loads", asset.status === 200, "HTTP " + asset.status);
     record("Frontend bundle targets deployed Render API", asset.status === 200 && assetText.includes(base),
       asset.status === 200 && assetText.includes(base) ? "API base URL found" : "API base URL not found in first JS bundle");
-    record("Vercel bundle includes Access requests portal", asset.status === 200 && assetText.includes("Access requests"),
-      asset.status === 200 && assetText.includes("Access requests") ? "Admin UI marker found" : "Admin UI marker missing");
-    record("Vercel bundle includes My academics student workspace", asset.status === 200 && assetText.includes("My academics"),
-      asset.status === 200 && assetText.includes("My academics") ? "Student UI marker found" : "Student UI marker missing");
-    record("Vercel bundle includes public account request screen", asset.status === 200 && assetText.includes("Request an account"),
-      asset.status === 200 && assetText.includes("Request an account") ? "Public request UI marker found" : "Public request UI marker missing");
+    record("Vercel bundle includes Access requests portal", asset.status === 200 && productionAssetSet.includes("Access requests"),
+      asset.status === 200 && productionAssetSet.includes("Access requests") ? "Admin UI marker found" : "Admin UI marker missing");
+    record("Vercel bundle includes My academics student workspace", asset.status === 200 && productionAssetSet.includes("My academics"),
+      asset.status === 200 && productionAssetSet.includes("My academics") ? "Student UI marker found" : "Student UI marker missing");
+    record("Vercel bundle includes public account request screen", asset.status === 200 && productionAssetSet.includes("Request an account"),
+      asset.status === 200 && productionAssetSet.includes("Request an account") ? "Public request UI marker found" : "Public request UI marker missing");
     const previewOrigin = "https://algions-school-management-git-f-60837a-md-mohseen-alis-projects.vercel.app";
     const preview = await fetch(previewOrigin + "/", { signal: AbortSignal.timeout(20000) });
     const previewHtml = await preview.text();
@@ -83,12 +110,13 @@ try {
     if (preview.status === 200 && previewScriptMatch) {
       const previewAsset = await fetch(new URL(previewScriptMatch[1], previewOrigin), { signal: AbortSignal.timeout(20000) });
       const previewText = await previewAsset.text();
-      record("Vercel feature preview includes Access requests UI", previewAsset.status === 200 && previewText.includes("Access requests"),
-        "HTTP " + previewAsset.status + (previewText.includes("Access requests") ? ", marker found" : ", marker missing"));
-      record("Vercel feature preview includes My academics UI", previewAsset.status === 200 && previewText.includes("My academics"),
-        "HTTP " + previewAsset.status + (previewText.includes("My academics") ? ", marker found" : ", marker missing"));
-      record("Vercel feature preview includes public account request UI", previewAsset.status === 200 && previewText.includes("Request an account"),
-        "HTTP " + previewAsset.status + (previewText.includes("Request an account") ? ", marker found" : ", marker missing"));
+      const previewAssetSet = await collectJsBundle(new URL(previewScriptMatch[1], previewOrigin).toString(), previewText);
+      record("Vercel feature preview includes Access requests UI", previewAsset.status === 200 && previewAssetSet.includes("Access requests"),
+        "HTTP " + previewAsset.status + (previewAssetSet.includes("Access requests") ? ", marker found" : ", marker missing"));
+      record("Vercel feature preview includes My academics UI", previewAsset.status === 200 && previewAssetSet.includes("My academics"),
+        "HTTP " + previewAsset.status + (previewAssetSet.includes("My academics") ? ", marker found" : ", marker missing"));
+      record("Vercel feature preview includes public account request UI", previewAsset.status === 200 && previewAssetSet.includes("Request an account"),
+        "HTTP " + previewAsset.status + (previewAssetSet.includes("Request an account") ? ", marker found" : ", marker missing"));
     } else {
       record("Vercel feature preview includes Access requests UI", false, "preview bundle not accessible");
       record("Vercel feature preview includes My academics UI", false, "preview bundle not accessible");

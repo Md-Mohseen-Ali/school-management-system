@@ -22,6 +22,21 @@ public interface StudentEnrollmentRepository extends
     java.util.List<StudentEnrollment> findByStudent_IdInAndEndDateIsNull(java.util.List<Long> studentIds);
     
     @Query("""
+            SELECT CASE WHEN COUNT(e) > 0 THEN TRUE ELSE FALSE END
+            FROM StudentEnrollment e
+            WHERE e.student.id = :studentId
+              AND e.section.id = :sectionId
+              AND e.startDate <= :toDate
+              AND (e.endDate IS NULL OR e.endDate >= :fromDate)
+            """)
+    boolean existsEnrollmentInSectionDuringRange(
+            @Param("studentId") Long studentId,
+            @Param("sectionId") Long sectionId,
+            @Param("fromDate") LocalDate fromDate,
+            @Param("toDate") LocalDate toDate
+    );
+
+    @Query("""
     	    SELECT CASE WHEN COUNT(e) > 0 THEN TRUE ELSE FALSE END
     	    FROM StudentEnrollment e
     	    WHERE e.student.id = :studentId

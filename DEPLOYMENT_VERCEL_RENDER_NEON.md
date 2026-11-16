@@ -83,7 +83,7 @@ Generate a fresh JWT secret locally in PowerShell and paste it directly into Ren
 [Convert]::ToBase64String([Security.Cryptography.RandomNumberGenerator]::GetBytes(32))
 ```
 
-11. Create the Web Service and inspect deploy logs. Spring Boot must connect to Neon and Flyway must apply migrations V1–V6.
+11. Create the Web Service and inspect deploy logs. Spring Boot must connect to Neon and Flyway must apply migrations V1–V7.
 12. Copy the backend service origin, for example `https://YOUR-API-NAME.onrender.com` (origin only, no trailing slash).
 13. Check `https://YOUR-API-NAME.onrender.com/actuator/health` returns `{"status":"UP"}`. An initial 502/503 can occur while a free service starts; inspect Render logs before changing code.
 

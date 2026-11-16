@@ -26,8 +26,8 @@ public interface StudentEnrollmentRepository extends
     	    FROM StudentEnrollment e
     	    WHERE e.student.id = :studentId
     	      AND e.section.id = :sectionId
-    	      AND e.startDate <= :attendanceDate
-    	      AND (e.endDate IS NULL OR e.endDate >= :attendanceDate)
+              AND e.startDate <= :attendanceDate
+              AND (e.endDate IS NULL OR e.endDate >= :attendanceDate)
     	    """)
     	boolean existsEnrollmentOnDate(
     	        @Param("studentId") Long studentId,
@@ -38,7 +38,7 @@ public interface StudentEnrollmentRepository extends
     	@Query("""
     	    SELECT e
     	    FROM StudentEnrollment e
-    	    WHERE e.section.id = :sectionId
+            WHERE e.section.id = :sectionId
     	      AND e.startDate <= :attendanceDate
     	      AND (e.endDate IS NULL OR e.endDate >= :attendanceDate)
     	    """)

@@ -257,7 +257,7 @@ public class AccountAccessRequestService {
                 r.getEmployeeCode(), r.getHireDate(), r.getAlternatePhone(),
                 r.getAdmissionNumber(), r.getFirstName(), r.getLastName(), r.getDateOfBirth(),
                 r.getStudentAdmissionNumber(), r.getRelationship(), r.getStatus(),
-                r.getReviewNote(), r.getReviewedByUserId(), r.getReviewedAt(),
+                r.isIdentityVerified(), r.getReviewNote(), r.getReviewedByUserId(), r.getReviewedAt(),
                 r.getProvisionedEntityId(), r.getCreatedAt());
     }
 

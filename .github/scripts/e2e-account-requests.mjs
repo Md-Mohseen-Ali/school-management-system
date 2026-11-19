@@ -146,6 +146,6 @@ async function run() {
       {initialPassword:["Another","Request","2026","!"].join("-"),identityVerified:true,reviewNote:"Previously verified applicant"}),409);
   await expect("Rejected request cannot be approved",
     await api(admin,"/api/v1/account-requests/"+rejectId+"/approve","POST",
-      {initialPassword:["Another","Request","2026","!"].join("-")}),409);
+      {initialPassword:["Another","Request","2026","!"].join("-"),identityVerified:true,reviewNote:"Previously verified applicant"}),409);
 }
 run().catch(e=>check("Account request E2E exception",false,e?.message||String(e))).finally(report);

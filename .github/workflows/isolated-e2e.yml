@@ -5,6 +5,7 @@ on:
     branches:
       - test/production-smoke-2026-11-16
       - feature/role-portals-profile-and-tracker
+      - fix/security-enrollment-and-docs
   pull_request:
     branches:
       - main

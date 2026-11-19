@@ -183,5 +183,7 @@ async function run() {
     futureProfile.className==null && futureProfile.sectionName==null &&
     futureAcademics.student?.className==null && futureAcademics.student?.sectionName==null &&
     Array.isArray(futureAcademics.subjects) && futureAcademics.subjects.length===0);
+  check("Auth profile also excludes a future-dated enrollment",
+    futureMe.profile?.className==null && futureMe.profile?.sectionName==null);
 }
 run().catch(e=>check("Self-service E2E exception",false,e?.message||String(e))).finally(report);

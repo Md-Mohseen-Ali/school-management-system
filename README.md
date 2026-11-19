@@ -105,7 +105,7 @@ Use a strong, randomly generated Base64 JWT secret. Generate one in PowerShell:
 [Convert]::ToBase64String([Security.Cryptography.RandomNumberGenerator]::GetBytes(32))
 ```
 
-Set `POSTGRES_PASSWORD` and `DB_PASSWORD` to the same local password. Do not commit `.env`.
+Set `POSTGRES_PASSWORD` and `DB_PASSWORD` to the same local password. Set `DEMO_ADMIN_PASSWORD` to a unique random value (16–72 UTF-8 bytes); this enables the seeded Admin account with a private password. Do not commit `.env`.
 
 ### 2. Start PostgreSQL
 
@@ -161,7 +161,7 @@ The local Flyway demo seed includes these fabricated accounts:
 
 | Role | Email | Password |
 |---|---|---|
-| Administrator | `admin@school.demo` | `Admin@2026School` |
+| Administrator | `admin@school.demo` | Configured privately through backend `DEMO_ADMIN_PASSWORD`; never published |
 | Teacher | `teacher@school.demo` | `Teacher@2026School` |
 | Guardian 1 | `guardian1@school.demo` | `Guardian@2026School` |
 | Guardian 2 | `guardian2@school.demo` | `Guardian2@2026School` |
@@ -235,7 +235,7 @@ npm ci
 npm run build
 ```
 
-The GitHub Actions workflow `.github/workflows/isolated-e2e.yml` starts a disposable PostgreSQL 17 database, applies Flyway migrations V1–V7 and seed data, starts the backend and frontend, then runs attendance, examination, fee, self-service, account-provisioning, public account-request approval/rejection, student-payment-history and Chromium role-workspace checks. The latest verified feature revision passed 249 API assertions across seven suites and 37 browser checks across the public request flow and all four roles. The database is destroyed with the runner. Exact run evidence is recorded in [PROJECT_TRACKER.md](PROJECT_TRACKER.md).
+The GitHub Actions workflow `.github/workflows/isolated-e2e.yml` starts a disposable PostgreSQL 17 database, applies Flyway migrations V1–V8 and seed data, starts the backend and frontend, then runs attendance, examination, fee, self-service, account-provisioning, public account-request approval/rejection, student-payment-history and Chromium role-workspace checks. The latest verified feature revision passed 249 API assertions across seven suites and 37 browser checks across the public request flow and all four roles. The database is destroyed with the runner. Exact run evidence is recorded in [PROJECT_TRACKER.md](PROJECT_TRACKER.md).
 
 Do not treat an earlier test run as proof for a later commit. Use the workflow run associated with the exact commit being submitted. The separate production smoke suite is read-only and checks the deployed Vercel/Render endpoints; it is not a substitute for isolated workflow tests.
 
@@ -244,19 +244,19 @@ Do not treat an earlier test run as proof for a later commit. Use the workflow r
 - Local credentials and JWT signing secrets belong in `.env`, never in source control.
 - `.gitignore` excludes `.env` files, `node_modules`, frontend build output and Maven `target` directories.
 - Demo records are fabricated. Do not commit actual student, guardian or staff personal information.
-- The demo passwords above are public assessment credentials and must not be used outside the local demo.
+- Teacher, guardian and student demo credentials are assessment-only. The Admin demo password is configured privately through `DEMO_ADMIN_PASSWORD`; do not put it in source control, frontend code or public recordings.
 
 ## Known limitations / review before submission
 
 - The isolated E2E suite covers core business lifecycles and the documented privacy regressions; additional boundary, high-volume, mobile viewport and assistive-technology tests remain worthwhile.
-- The feature branch has not been merged or production-deployed. Re-run the read-only production smoke test after deployment with each demo role.
+- The current `main` branch contains the merged role portals and UI contrast refresh. Run the read-only production smoke test against the latest deployment after every backend migration or security change.
 - Student self-service requires a linked AppUser account. New student registration now creates that login as part of the registration transaction; the administrator must communicate the initial password securely.
-- Public requests are untrusted until verified by an administrator. There is no automated email/OTP validation, CAPTCHA or application-level rate limiter; production exposure should be protected by an edge/WAF rate limit and the school must verify identity off-band.
+- Public account requests are throttled to three attempts per normalized email and 30 attempts per source address per rolling 15-minute window using PostgreSQL-backed counters. The administrator must explicitly attest to off-band identity verification and record verification details before approval. This is a manual verification control, not an automated email/OTP identity check; consider adding email verification and edge/WAF protections before real-school deployment.
 - Teacher approval creates the account/profile, but a teacher still needs section/subject assignment. Guardian approval requires a valid existing admission number and creates the guardian-student link. Student approval creates a new admission/login; admin still needs to enroll the student.
 - The public confirmation page displays a request reference but does not expose a public status lookup; applicants contact the school office for updates.
 - Student fee screens are read-only; guardians or administrators record simulated payments. No real payment processor is connected.
 - No self-service password reset/email delivery is included; temporary credentials are communicated by the school administrator.
-- A consolidated OpenAPI specification, ERD, 3–5 minute walkthrough video and short technical report remain separate submission deliverables. Track their completion in [PROJECT_TRACKER.md](PROJECT_TRACKER.md).
+- A consolidated OpenAPI specification, ERD and short technical report are separate written deliverables. The 3–5 minute walkthrough video has been recorded and uploaded. Track their completion in [PROJECT_TRACKER.md](PROJECT_TRACKER.md).
 
 ## Demonstration outline
 

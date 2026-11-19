@@ -108,7 +108,7 @@ Use the actual Render backend origin, with no trailing slash. It is a public API
 9. Deploy. Vercel builds the React app from `frontend` and serves `dist`.
 10. Copy the Vercel production domain, for example `https://YOUR-PROJECT.vercel.app`.
 
-The `frontend/vercel.json` file rewrites unmatched client-side routes to `index.html`, which is needed for Vite single-page application deep links. The security-hardening update does not change the Vercel project, domain assignment, root directory or `VITE_API_BASE_URL`; keep the already-submitted production URL attached to the same Vercel project. Vercel's Vite documentation describes this SPA fallback behavior.
+The `frontend/vercel.json` file rewrites unmatched client-side routes to `index.html`, which is needed for Vite single-page application deep links. The security-hardening update does not change the Vercel project, domain assignment, root directory or `VITE_API_BASE_URL`; keep the already-submitted production URL attached to the same Vercel project. Removing `DEMO_ADMIN_PASSWORD` from Render and restarting the backend disables `admin@school.demo` again; restore the secret only when the assessment account is needed. Vercel's Vite documentation describes this SPA fallback behavior.
 
 **Important:** Vite embeds `VITE_API_BASE_URL` into the frontend at build time. If it changes, update the Vercel environment variable and redeploy the frontend.
 
@@ -143,7 +143,7 @@ If you later add a custom Vercel domain, include that exact origin too. Vercel p
 
 ## 7.1 Public account-request abuse controls
 
-The V8 backend uses PostgreSQL-backed counters to allow up to three attempts per normalized email address and 30 attempts per source IP in a rolling 15-minute window. On Render, the controller reads the client address from Cloudflare's `CF-Connecting-IP` header; it falls back to the socket address for local/test deployments and does not trust client-supplied `X-Forwarded-For` values. Keep Render's standard Cloudflare front door in place for the source-IP bucket to identify individual visitors correctly.
+The V8 backend uses PostgreSQL-backed counters to allow up to three attempts per normalized email address and 30 attempts per source IP in a fixed 15-minute window. On Render, the controller reads the client address from Cloudflare's `CF-Connecting-IP` header; it falls back to the socket address for local/test deployments and does not trust client-supplied `X-Forwarded-For` values. Keep Render's standard Cloudflare front door in place for the source-IP bucket to identify individual visitors correctly.
 
 ## 7. Free-tier limitations
 

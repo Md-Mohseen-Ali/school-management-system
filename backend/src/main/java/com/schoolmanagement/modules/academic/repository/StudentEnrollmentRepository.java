@@ -2,6 +2,8 @@ package com.schoolmanagement.modules.academic.repository;
 import java.time.LocalDate;
 import java.util.List;
 
+import org.springframework.data.domain.Pageable;
+
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -16,7 +18,19 @@ public interface StudentEnrollmentRepository extends
 
     boolean existsByStudent_IdAndEndDateIsNull(Long studentId);
 
-    java.util.Optional<StudentEnrollment> findFirstByStudent_IdAndEndDateIsNullOrderByStartDateDesc(Long studentId);
+    @Query("""
+            SELECT e
+            FROM StudentEnrollment e
+            WHERE e.student.id = :studentId
+              AND e.startDate <= :asOfDate
+              AND (e.endDate IS NULL OR e.endDate >= :asOfDate)
+            ORDER BY e.startDate DESC, e.id DESC
+            """)
+    List<StudentEnrollment> findCurrentEnrollments(
+            @Param("studentId") Long studentId,
+            @Param("asOfDate") LocalDate asOfDate,
+            Pageable pageable
+    );
 
     java.util.List<StudentEnrollment> findByStudent_IdInAndEndDateIsNull(java.util.List<Long> studentIds);
     

@@ -1,9 +1,9 @@
 # Algions School Management System — Requirements & Delivery Tracker
 
-Last reviewed: 2026-11-16  
+Last reviewed: 2026-11-19  
 Assignment: Algions AI Labs Private Limited — Full-Stack Web Development Internship Project: School Management System  
-Working branch: feature/role-portals-profile-and-tracker  
-Production branch: main (feature is not merged/deployed)
+Working branch: fix/security-enrollment-and-docs  
+Production branch: main (role-portal and UI-refresh releases merged; this security-hardening branch is under review)
 
 Status meanings: **Verified** = passed the current feature-branch build or automated test; **Implemented** = code is present but not fully validated; **Pending** = not delivered or checked yet.
 
@@ -21,7 +21,7 @@ Status meanings: **Verified** = passed the current feature-branch build or autom
 | Profile screen | Account identity/contact/status plus student enrollment, teacher assignments, guardian child/class context and admin management scope | Verified by API and Chromium E2E |
 | Search/filter/pagination | Existing academic/operational search and paging; student/guardian attendance date filters; invoice search | Core paths exercised; exhaustive filter-combination tests still pending |
 | Accessible/responsive UI | Semantic forms, accessible labels and responsive styles added for profiles, people directory and portals | Implemented; dedicated viewport/screen-reader audit pending |
-| Database integrity and migrations | PostgreSQL schema via Flyway; V7 adds separate access requests, reviewer relation and one-pending-email index | Verified by isolated V1–V7 startup/E2E |
+| Database integrity and migrations | PostgreSQL schema via Flyway; V8 disables the fixed demo Admin password, adds persisted identity-verification attestation and hashed PostgreSQL rate-limit counters | V8 migration pending isolated verification |
 | Documentation | README, ERD and consolidated API reference | Added; final editorial review pending |
 
 ## 2. Role journey tracker
@@ -84,7 +84,8 @@ Status meanings: **Verified** = passed the current feature-branch build or autom
 - [x] Student My academics shows current enrollment, class, section, academic year, active subjects and assigned teacher name/email. Existing My attendance, My fees and My results remain available.
 - [x] Profiles expose account details and role-specific student enrollment, teacher assignments (including inactive teacher identity/status), guardian child/class context and admin management scope.
 - [x] API/browser E2E covers request transitions, role restrictions, credential non-disclosure, transactional rollback, student academic scoping and all four profiles.
-- [!] No email/OTP verification, CAPTCHA, application rate limiter, public status lookup, invitation mail, password reset or profile-edit workflow is included. Verify identities off-band and add infrastructure-level rate limiting before public internet exposure.
+- [x] Public account requests use PostgreSQL-backed per-email and per-source-address throttling. Admin approval requires an explicit off-band identity-verification attestation and a required verification note, recorded on the request.
+- [!] Automated email/OTP verification, CAPTCHA, public status lookup, invitation mail, password reset and profile-edit workflow are not included. The verification gate is a manual school-admin control, not automated proof of identity.
 
 ## 3. Current feature-branch verification
 
@@ -171,4 +172,17 @@ The tested code and test commit is f94bcc38fdca4478b43ed71f11ebd3d1047d53c2. The
 - [ ] Open/complete pull request review.
 - [ ] Merge/deploy only after review.
 - [ ] Re-run read-only production smoke tests after deployment and update live demo status.
-- [ ] Record the 3–5 minute walkthrough and finish the technical report/submission form.
+- [x] Record and upload the 3–5 minute walkthrough video.
+- [ ] Finish the short technical report/submission form.
+
+
+## 7. Security review follow-up (2026-11-19)
+
+- [x] Remove the public Admin password from the frontend login helper and README; leave the email as the seeded assessment identity.
+- [x] Flyway V8 disables the seeded Admin account. A private `DEMO_ADMIN_PASSWORD` backend environment value re-enables it with a newly BCrypt-hashed password on startup; without the variable the seeded Admin remains disabled.
+- [x] Add persistent PostgreSQL-backed request throttling (3 attempts per normalized email and 30 attempts per connection source address per 15-minute window); only SHA-256 rate keys are stored.
+- [x] Require a boolean off-band identity-verification attestation plus a required verification note before an administrator can approve a public account request; persist and expose the attestation.
+- [x] Select student profile/academic enrollment using the Asia/Kolkata current date, excluding future-dated and expired enrollments.
+- [x] Update README and Render deployment instructions for the new controls.
+- [ ] Run isolated PostgreSQL/API/browser workflows and production smoke tests against the resulting release.
+- [!] Manual identity attestation is enforced; automated email/OTP verification is still a known limitation. No actual email address ownership check is performed.

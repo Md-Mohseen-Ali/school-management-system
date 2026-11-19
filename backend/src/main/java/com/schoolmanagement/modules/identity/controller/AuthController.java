@@ -1,6 +1,10 @@
 package com.schoolmanagement.modules.identity.controller;
 
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.LinkedHashMap;
+
+import org.springframework.data.domain.PageRequest;
 import java.util.List;
 import java.util.Map;
 
@@ -36,6 +40,8 @@ import jakarta.validation.Valid;
 @RestController
 @RequestMapping("/api/v1/auth")
 public class AuthController {
+
+    private static final ZoneId SCHOOL_ZONE = ZoneId.of("Asia/Kolkata");
 
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
@@ -128,7 +134,7 @@ public class AuthController {
                 profile.put("dateOfBirth", student.getDateOfBirth());
                 profile.put("admissionDate", student.getAdmissionDate());
                 profile.put("studentStatus", student.getStatus().name());
-                enrollmentRepository.findFirstByStudent_IdAndEndDateIsNullOrderByStartDateDesc(student.getId())
+                enrollmentRepository.findCurrentEnrollments(student.getId(), LocalDate.now(SCHOOL_ZONE), PageRequest.of(0, 1)).stream().findFirst()
                         .ifPresent(enrollment -> addEnrollment(profile, enrollment));
             });
         } else if (roles.contains("ROLE_TEACHER")) {
@@ -166,7 +172,7 @@ public class AuthController {
                             item.put("relationship", link.getRelationship());
                             item.put("primary", link.isPrimaryGuardian());
                             item.put("studentStatus", student.getStatus().name());
-                            enrollmentRepository.findFirstByStudent_IdAndEndDateIsNullOrderByStartDateDesc(student.getId())
+                            enrollmentRepository.findCurrentEnrollments(student.getId(), LocalDate.now(SCHOOL_ZONE), PageRequest.of(0, 1)).stream().findFirst()
                                     .ifPresent(enrollment -> {
                                         item.put("className", enrollment.getSection().getSchoolClass().getName());
                                         item.put("sectionName", enrollment.getSection().getSectionName());

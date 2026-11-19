@@ -57,6 +57,9 @@ public class AccountAccessRequest {
     @Column(nullable = false, length = 20)
     private AccountRequestStatus status = AccountRequestStatus.PENDING;
 
+    @Column(name = "identity_verified", nullable = false)
+    private boolean identityVerified;
+
     @Column(name = "review_note", length = 500)
     private String reviewNote;
 
@@ -84,8 +87,9 @@ public class AccountAccessRequest {
         if (status == null) status = AccountRequestStatus.PENDING;
     }
 
-    public void markApproved(Long reviewerId, Long entityId, String note) {
+    public void markApproved(Long reviewerId, Long entityId, String note, boolean identityVerified) {
         this.status = AccountRequestStatus.APPROVED;
+        this.identityVerified = identityVerified;
         this.reviewedByUserId = reviewerId;
         this.provisionedEntityId = entityId;
         this.reviewNote = note;
@@ -127,6 +131,7 @@ public class AccountAccessRequest {
     public String getRelationship() { return relationship; }
     public void setRelationship(String relationship) { this.relationship = relationship; }
     public AccountRequestStatus getStatus() { return status; }
+    public boolean isIdentityVerified() { return identityVerified; }
     public String getReviewNote() { return reviewNote; }
     public Long getReviewedByUserId() { return reviewedByUserId; }
     public Instant getReviewedAt() { return reviewedAt; }

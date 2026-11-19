@@ -1,9 +1,11 @@
 package com.schoolmanagement.modules.academic.controller;
 
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
@@ -38,6 +40,8 @@ import org.springframework.web.server.ResponseStatusException;
 @PreAuthorize("hasRole('STUDENT')")
 public class StudentPortalController {
 
+    private static final ZoneId SCHOOL_ZONE = ZoneId.of("Asia/Kolkata");
+
     private final StudentRepository studentRepository;
     private final StudentEnrollmentRepository enrollmentRepository;
     private final TeacherAssignmentRepository teacherAssignmentRepository;
@@ -68,7 +72,7 @@ public class StudentPortalController {
     public StudentPortalProfileResponse getProfile(Authentication authentication) {
         Student student = findStudent(authentication.getName());
         StudentEnrollment enrollment = enrollmentRepository
-                .findFirstByStudent_IdAndEndDateIsNullOrderByStartDateDesc(student.getId())
+                .findCurrentEnrollments(student.getId(), LocalDate.now(SCHOOL_ZONE), PageRequest.of(0, 1)).stream().findFirst()
                 .orElse(null);
 
         return new StudentPortalProfileResponse(
@@ -94,7 +98,7 @@ public class StudentPortalController {
     public StudentAcademicOverviewResponse getMyAcademics(Authentication authentication) {
         Student student = findStudent(authentication.getName());
         StudentEnrollment enrollment = enrollmentRepository
-                .findFirstByStudent_IdAndEndDateIsNullOrderByStartDateDesc(student.getId())
+                .findCurrentEnrollments(student.getId(), LocalDate.now(SCHOOL_ZONE), PageRequest.of(0, 1)).stream().findFirst()
                 .orElse(null);
 
         List<com.schoolmanagement.modules.academic.dto.StudentSubjectTeacherResponse> subjects =

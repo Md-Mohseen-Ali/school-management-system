@@ -57,13 +57,13 @@ export function PublicAccountRequest({ onBack }) {
         <div className="access-success-mark">✓</div>
         <div className="eyebrow">REQUEST SUBMITTED</div>
         <h1>We have received your request.</h1>
-        <p className="access-intro">Your portal account has not been created yet. The school administrator must verify your details and approve the request.</p>
+        <p className="access-intro">Your portal account has not been created yet. The school administrator must verify your identity outside this application and approve the request.</p>
         <div className="access-reference"><span>REQUEST REFERENCE</span><b>#{submitted.requestId}</b><small>Keep this reference and contact the school office for an update.</small></div>
         <button className="button primary full" onClick={onBack}>Back to sign in</button>
       </> : <>
         <div className="eyebrow">PORTAL ACCESS</div>
         <h1>Request an account</h1>
-        <p className="access-intro">Submit your details for school verification. A login is created only after an administrator approves the request.</p>
+        <p className="access-intro">Submit your details for school review. The school may contact you using independently confirmed details before an administrator approves the request.</p>
         <form className="access-form" onSubmit={submit}>
           <label>Account type<select value={role} onChange={e=>setRole(e.target.value)}>
             <option value="STUDENT">Student</option><option value="GUARDIAN">Guardian / Parent</option><option value="TEACHER">Teacher</option>
@@ -109,6 +109,7 @@ export function AccountRequestsWorkspace({ token }) {
   const [notice, setNotice] = useState(null);
   const [review, setReview] = useState(null);
   const [initialPassword, setInitialPassword] = useState('');
+  const [identityVerified, setIdentityVerified] = useState(false);
   const [reviewNote, setReviewNote] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -130,6 +131,7 @@ export function AccountRequestsWorkspace({ token }) {
   function openReview(request, action) {
     setReview({request,action});
     setInitialPassword('');
+    setIdentityVerified(false);
     setReviewNote('');
     setNotice(null);
   }
@@ -142,7 +144,7 @@ export function AccountRequestsWorkspace({ token }) {
     try {
       const endpoint = '/api/v1/account-requests/'+review.request.id+'/'+review.action;
       const body = review.action === 'approve'
-        ? {initialPassword,reviewNote:reviewNote.trim() || null}
+        ? {initialPassword,identityVerified,reviewNote:reviewNote.trim()}
         : {reviewNote:reviewNote.trim()};
       await apiRequest(endpoint,{method:'POST',token,body});
       setReview(null);
@@ -178,6 +180,7 @@ export function AccountRequestsWorkspace({ token }) {
           <div><span>Submitted</span><b>{formatDate(request.createdAt)}</b></div>
         </div>
         {request.reviewNote && <p className="access-review-note">Review note: {request.reviewNote}</p>}
+        {request.identityVerified && <p className="access-review-note">Identity verification was attested by the approving administrator.</p>}
         {request.status==='PENDING' && <div className="access-request-actions"><button className="ops-button secondary" onClick={()=>openReview(request,'reject')}>Reject</button><button className="ops-button primary" onClick={()=>openReview(request,'approve')}>Verify & approve</button></div>}
       </article>)}
     </div> : <div className="ops-empty"><div className="ops-empty-icon">✉</div><h3>No {status ? status.toLowerCase() : ''} requests</h3><p>New public requests will appear here for administrator review.</p></div>}
@@ -185,9 +188,12 @@ export function AccountRequestsWorkspace({ token }) {
       <section className="ops-modal access-review-modal" role="dialog" aria-modal="true" aria-labelledby="access-review-title">
         <div className="ops-modal-head"><div><h3 id="access-review-title">{review.action==='approve'?'Approve and provision account':'Reject account request'}</h3><p>{review.request.requestedRole} · {review.request.fullName} · {review.request.email}</p></div><button className="ops-close" onClick={()=>setReview(null)} disabled={busy} aria-label="Close">×</button></div>
         <form className="ops-form" onSubmit={submitReview}>
-          {review.action==='approve' ? <label>Initial password<input type="password" value={initialPassword} onChange={e=>setInitialPassword(e.target.value)} minLength="12" maxLength="72" autoComplete="new-password" required/><small className="ops-muted">At least 12 characters. The password is hashed and is not included in the response.</small></label> : null}
-          <label>{review.action==='approve'?'Administrator note (optional)':'Reason for rejection'}<textarea value={reviewNote} onChange={e=>setReviewNote(e.target.value)} maxLength="500" rows="3" required={review.action==='reject'} /></label>
-          <div className="ops-form-footer"><button type="button" className="ops-button secondary" onClick={()=>setReview(null)} disabled={busy}>Cancel</button><button className="ops-button primary" disabled={busy || (review.action==='approve'&&initialPassword.length<12)}>{busy?'Saving…':review.action==='approve'?'Approve request':'Reject request'}</button></div>
+          {review.action==='approve' ? <>
+            <label>Initial password<input type="password" value={initialPassword} onChange={e=>setInitialPassword(e.target.value)} minLength="12" maxLength="72" autoComplete="new-password" required/><small className="ops-muted">At least 12 characters. The password is hashed and is not included in the response.</small></label>
+            <label className="verification-attestation"><input type="checkbox" checked={identityVerified} onChange={e=>setIdentityVerified(e.target.checked)} required /> I verified this applicant's identity outside this application (for example, in person or using a contact method already on school records).</label>
+          </> : null}
+          <label>{review.action==='approve'?'Verification details (required)':'Reason for rejection'}<textarea value={reviewNote} onChange={e=>setReviewNote(e.target.value)} maxLength="500" rows="3" required /></label>
+          <div className="ops-form-footer"><button type="button" className="ops-button secondary" onClick={()=>setReview(null)} disabled={busy}>Cancel</button><button className="ops-button primary" disabled={busy || (review.action==='approve'&&(initialPassword.length<12||!identityVerified||!reviewNote.trim()))}>{busy?'Saving…':review.action==='approve'?'Approve request':'Reject request'}</button></div>
         </form>
       </section>
     </div>}

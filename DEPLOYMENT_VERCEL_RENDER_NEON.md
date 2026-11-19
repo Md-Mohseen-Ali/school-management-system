@@ -6,7 +6,7 @@ This deployment uses three services:
 - **Backend:** Spring Boot 4.1.2 / Java 17 on Render as a Docker web service
 - **Database:** PostgreSQL on Neon
 
-The Vercel frontend uses `VITE_API_BASE_URL` to call the backend directly. The Spring Boot backend uses `CORS_ALLOWED_ORIGINS` to allow the exact Vercel production origin.
+The Vercel frontend uses `VITE_API_BASE_URL` to call the backend directly. The Spring Boot backend uses `CORS_ALLOWED_ORIGINS` to allow the exact Vercel production origin. The security-hardening release adds one backend-only `DEMO_ADMIN_PASSWORD` secret; it does not require a new Vercel variable or a new frontend domain.
 
 ## 1. Apply this deployment patch
 
@@ -74,6 +74,7 @@ The Neon Free plan currently includes 1 GB PostgreSQL storage and 100 compute-ho
 | `DB_PASSWORD` | Neon database password |
 | `JWT_SECRET` | Fresh Base64-encoded random 32-byte secret |
 | `CORS_ALLOWED_ORIGINS` | Temporary value `http://localhost:5173`; replace after Vercel deploy with the exact Vercel production origin |
+| `DEMO_ADMIN_PASSWORD` | A unique private password (16–72 UTF-8 bytes) for `admin@school.demo`; store only in Render's secret environment settings |
 
 Render supplies `PORT`; the app uses `${PORT:8080}`. Do not hard-code the Render port.
 
@@ -83,7 +84,7 @@ Generate a fresh JWT secret locally in PowerShell and paste it directly into Ren
 [Convert]::ToBase64String([Security.Cryptography.RandomNumberGenerator]::GetBytes(32))
 ```
 
-11. Create the Web Service and inspect deploy logs. Spring Boot must connect to Neon and Flyway must apply migrations V1–V7.
+11. Create the Web Service and inspect deploy logs. Spring Boot must connect to Neon and Flyway must apply migrations V1–V8.
 12. Copy the backend service origin, for example `https://YOUR-API-NAME.onrender.com` (origin only, no trailing slash).
 13. Check `https://YOUR-API-NAME.onrender.com/actuator/health` returns `{"status":"UP"}`. An initial 502/503 can occur while a free service starts; inspect Render logs before changing code.
 
@@ -102,12 +103,12 @@ Generate a fresh JWT secret locally in PowerShell and paste it directly into Ren
 VITE_API_BASE_URL=https://YOUR-API-NAME.onrender.com
 ```
 
-Use the actual Render backend origin, with no trailing slash. It is a public API URL, not a secret. Do not put DB credentials or JWT signing secrets in Vercel.
+Use the actual Render backend origin, with no trailing slash. It is a public API URL, not a secret. Do not put DB credentials, JWT signing secrets or `DEMO_ADMIN_PASSWORD` in Vercel.
 
 9. Deploy. Vercel builds the React app from `frontend` and serves `dist`.
 10. Copy the Vercel production domain, for example `https://YOUR-PROJECT.vercel.app`.
 
-The `frontend/vercel.json` file rewrites unmatched client-side routes to `index.html`, which is needed for Vite single-page application deep links. Vercel's Vite documentation describes this SPA fallback behavior.
+The `frontend/vercel.json` file rewrites unmatched client-side routes to `index.html`, which is needed for Vite single-page application deep links. The security-hardening update does not change the Vercel project, domain assignment, root directory or `VITE_API_BASE_URL`; keep the already-submitted production URL attached to the same Vercel project. Removing `DEMO_ADMIN_PASSWORD` from Render and restarting the backend disables `admin@school.demo` again; restore the secret only when the assessment account is needed. Vercel's Vite documentation describes this SPA fallback behavior.
 
 **Important:** Vite embeds `VITE_API_BASE_URL` into the frontend at build time. If it changes, update the Vercel environment variable and redeploy the frontend.
 
@@ -132,13 +133,17 @@ If you later add a custom Vercel domain, include that exact origin too. Vercel p
 ## 6. Verify the deployed application
 
 1. Open the Vercel production URL in a private/incognito browser window.
-2. Sign in with the seeded administrator account:
-   - `admin@school.demo`
-   - `Admin@2026School`
+2. Sign in with the assessment administrator account:
+   - Email: `admin@school.demo`
+   - Password: the private value configured in Render as `DEMO_ADMIN_PASSWORD` (share it with evaluators only through a private channel). The fixed password from the original seed is disabled by migration V8.
 3. Check Dashboard, Students, Sections, Subjects, Enrollments, Attendance, Examinations, Fees and Audit.
 4. If the first backend request takes time, wait for Render to wake and retry once.
 5. If the browser reports a CORS error, verify `CORS_ALLOWED_ORIGINS` exactly matches the Vercel production origin (scheme + hostname, no path and no trailing slash), then confirm the backend redeployed.
 6. If a login or data request fails, inspect Render backend logs and Vercel deployment/build logs. Do not put credentials into browser code or screenshots.
+
+## 7.1 Public account-request abuse controls
+
+The V8 backend uses PostgreSQL-backed counters to allow up to three attempts per normalized email address and 30 attempts per source IP in a fixed 15-minute window. On Render, the controller reads the client address from Cloudflare's `CF-Connecting-IP` header; it falls back to the socket address for local/test deployments and does not trust client-supplied `X-Forwarded-For` values. Keep Render's standard Cloudflare front door in place for the source-IP bucket to identify individual visitors correctly.
 
 ## 7. Free-tier limitations
 

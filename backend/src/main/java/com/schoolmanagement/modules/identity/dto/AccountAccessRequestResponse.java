@@ -22,6 +22,7 @@ public record AccountAccessRequestResponse(
         String studentAdmissionNumber,
         String relationship,
         AccountRequestStatus status,
+        boolean identityVerified,
         String reviewNote,
         Long reviewedByUserId,
         Instant reviewedAt,

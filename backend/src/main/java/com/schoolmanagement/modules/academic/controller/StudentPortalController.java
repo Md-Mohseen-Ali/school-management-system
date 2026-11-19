@@ -1,6 +1,7 @@
 package com.schoolmanagement.modules.academic.controller;
 
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 
 import org.springframework.data.domain.Page;
@@ -37,6 +38,8 @@ import org.springframework.web.server.ResponseStatusException;
 @RequestMapping("/api/v1/student")
 @PreAuthorize("hasRole('STUDENT')")
 public class StudentPortalController {
+
+    private static final ZoneId SCHOOL_ZONE = ZoneId.of("Asia/Kolkata");
 
     private final StudentRepository studentRepository;
     private final StudentEnrollmentRepository enrollmentRepository;

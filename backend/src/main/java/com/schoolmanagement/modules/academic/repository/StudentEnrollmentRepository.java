@@ -16,7 +16,18 @@ public interface StudentEnrollmentRepository extends
 
     boolean existsByStudent_IdAndEndDateIsNull(Long studentId);
 
-    java.util.Optional<StudentEnrollment> findFirstByStudent_IdAndEndDateIsNullOrderByStartDateDesc(Long studentId);
+    @Query("""
+            SELECT e
+            FROM StudentEnrollment e
+            WHERE e.student.id = :studentId
+              AND e.startDate <= :asOfDate
+              AND (e.endDate IS NULL OR e.endDate >= :asOfDate)
+            ORDER BY e.startDate DESC
+            """)
+    java.util.Optional<StudentEnrollment> findCurrentEnrollment(
+            @Param("studentId") Long studentId,
+            @Param("asOfDate") LocalDate asOfDate
+    );
 
     java.util.List<StudentEnrollment> findByStudent_IdInAndEndDateIsNull(java.util.List<Long> studentIds);
     

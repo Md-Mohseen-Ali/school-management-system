@@ -27,8 +27,8 @@ export async function call(path, options = {}) {
   try { data = raw ? JSON.parse(raw) : null; } catch { data = raw; }
   return {status:response.status, data, raw, headers:response.headers};
 }
-export async function api(token, path, method = "GET", body) {
-  const headers = {};
+export async function api(token, path, method = "GET", body, extraHeaders = {}) {
+  const headers = {...extraHeaders};
   if (token) headers.Authorization = "Bearer " + token;
   const options = {method, headers};
   if (body !== undefined) {

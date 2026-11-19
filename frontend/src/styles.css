@@ -882,3 +882,22 @@ td,
   .ops-table td { font-size: 12px; }
   .access-request-details b { font-size: 12px; }
 }
+
+/* Make the mandatory account-review identity attestation clear and usable. */
+.ops-form label.verification-attestation {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 10px;
+  line-height: 1.55;
+  color: #293950;
+  font-weight: 600;
+}
+.ops-form label.verification-attestation input[type="checkbox"] {
+  flex: 0 0 18px;
+  width: 18px;
+  height: 18px;
+  min-height: 18px;
+  margin: 2px 0 0;
+  accent-color: #315bd6;
+}

@@ -57,7 +57,6 @@ const TITLES = {
 };
 
 const DEMO_LOGINS = [
-  { role: 'Administrator', email: 'admin@school.demo', password: 'Admin@2026School' },
   { role: 'Teacher', email: 'teacher@school.demo', password: 'Teacher@2026School' },
   { role: 'Guardian', email: 'guardian1@school.demo', password: 'Guardian@2026School' },
   { role: 'Student', email: 'student1@school.demo', password: 'Student@2026School' },
@@ -72,8 +71,8 @@ function friendlyRole(roles) {
 }
 
 function Login({ onLogin }) {
-  const [email, setEmail] = useState('admin@school.demo');
-  const [password, setPassword] = useState('Admin@2026School');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [requestAccess, setRequestAccess] = useState(false);
@@ -122,7 +121,7 @@ function Login({ onLogin }) {
             {error && <div className="alert error">{error}</div>}
             <button className="button primary full" disabled={busy}>{busy ? 'Signing in…' : 'Sign in'} <span>→</span></button>
           </form>
-          <details className="demo-accounts"><summary>Demo account credentials</summary><div className="demo-list">{DEMO_LOGINS.map((item) => <button type="button" key={item.role} onClick={() => { setEmail(item.email); setPassword(item.password); }}><b>{item.role}</b><span>{item.email}</span></button>)}</div><small>Dummy records only. Use these accounts for assessment demonstration.</small></details>
+          <details className="demo-accounts"><summary>Demo account credentials</summary><div className="demo-list">{DEMO_LOGINS.map((item) => <button type="button" key={item.role} onClick={() => { setEmail(item.email); setPassword(item.password); }}><b>{item.role}</b><span>{item.email}</span></button>)}</div><small>Teacher, guardian and student accounts use synthetic assessment records. Administrator access is issued privately by the deployment operator.</small></details>
           <div className="request-access-prompt"><span>Do not have a school portal account?</span><button type="button" onClick={() => setRequestAccess(true)}>Request account access</button></div>
         </div>
       </section>

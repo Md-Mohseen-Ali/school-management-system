@@ -64,6 +64,24 @@ async function run() {
   check("Public account requests are throttled after three attempts per email",
     (await api(null,"/api/v1/account-requests","POST",limitedPayload)).status===429);
 
+  const testClientIp = "198.51.100.44";
+  let acceptedFromIp = 0;
+  for (let i = 0; i < 31; i++) {
+    const email = "ip-rate-"+i+"-"+stamp+"@example.com";
+    const response = await api(null,"/api/v1/account-requests","POST",{
+      requestedRole:"TEACHER",fullName:"IP Rate Test "+i,email,
+      employeeCode:"IP-"+i+"-"+stamp
+    },{"CF-Connecting-IP":testClientIp});
+    if (response.status === 201) acceptedFromIp++;
+    else if (response.status !== 429) {
+      check("IP rate limit returns expected status for attempt "+(i+1),
+        false,"unexpected HTTP "+response.status);
+      break;
+    }
+  }
+  check("Per-client-IP request limit allows 30 and blocks the 31st attempt",
+    acceptedFromIp===30);
+
   const badEmail=makeEmail("guardian-invalid");
   const badId=await request({
     requestedRole:"GUARDIAN",fullName:"Guardian Missing Student",

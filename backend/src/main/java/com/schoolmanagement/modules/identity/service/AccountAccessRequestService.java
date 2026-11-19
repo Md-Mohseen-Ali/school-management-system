@@ -36,6 +36,7 @@ public class AccountAccessRequestService {
     private final StudentService studentService;
     private final StudentGuardianService studentGuardianService;
     private final AuditService auditService;
+    private final AccountRequestRateLimitService rateLimitService;
 
     public AccountAccessRequestService(
             AccountAccessRequestRepository requestRepository,
@@ -44,7 +45,8 @@ public class AccountAccessRequestService {
             IdentityAccountService identityAccountService,
             StudentService studentService,
             StudentGuardianService studentGuardianService,
-            AuditService auditService) {
+            AuditService auditService,
+            AccountRequestRateLimitService rateLimitService) {
         this.requestRepository = requestRepository;
         this.userRepository = userRepository;
         this.studentRepository = studentRepository;
@@ -52,17 +54,29 @@ public class AccountAccessRequestService {
         this.studentService = studentService;
         this.studentGuardianService = studentGuardianService;
         this.auditService = auditService;
+        this.rateLimitService = rateLimitService;
     }
 
     @Transactional
-    public AccountAccessRequestSubmissionResponse submit(CreateAccountAccessRequest input) {
+    public AccountAccessRequestSubmissionResponse submit(
+            CreateAccountAccessRequest input, String remoteAddress) {
+        String email = input.email().trim().toLowerCase(Locale.ROOT);
+
+        int emailAttempts = rateLimitService.recordAttempt("email", email);
+        int ipAttempts = remoteAddress == null || remoteAddress.isBlank()
+                ? 0
+                : rateLimitService.recordAttempt("ip", remoteAddress);
+        if (emailAttempts > 3 || ipAttempts > 30) {
+            throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS,
+                    "Too many account requests. Please try again later.");
+        }
+
         UserRole role = input.requestedRole();
         if (role == UserRole.ADMIN) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "Administrator accounts cannot be requested through this form");
         }
 
-        String email = input.email().trim().toLowerCase(Locale.ROOT);
         if (userRepository.existsByEmailIgnoreCase(email)
                 || requestRepository.existsByEmailIgnoreCaseAndStatus(
                         email, AccountRequestStatus.PENDING)) {
@@ -166,7 +180,7 @@ public class AccountAccessRequestService {
         }
 
         String note = normalize(review.reviewNote());
-        request.markApproved(reviewerId, provisionedId, note);
+        request.markApproved(reviewerId, provisionedId, note, review.identityVerified());
         AccountAccessRequest saved = requestRepository.save(request);
         auditService.record(
                 "ACCOUNT_ACCESS_REQUEST_APPROVED",
@@ -175,7 +189,8 @@ public class AccountAccessRequestService {
                 Map.of("status", AccountRequestStatus.PENDING.name()),
                 Map.of("status", AccountRequestStatus.APPROVED.name(),
                         "role", role.name(),
-                        "provisionedEntityId", provisionedId));
+                        "provisionedEntityId", provisionedId,
+                        "identityVerified", saved.isIdentityVerified()));
         return toResponse(saved);
     }
 

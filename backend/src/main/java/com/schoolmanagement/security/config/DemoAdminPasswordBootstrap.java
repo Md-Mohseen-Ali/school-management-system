@@ -40,8 +40,14 @@ public class DemoAdminPasswordBootstrap implements ApplicationRunner {
     @Transactional
     public void run(ApplicationArguments args) {
         if (configuredPassword == null || configuredPassword.isBlank()) {
-            // Leave the fixed demo administrator disabled when no private
-            // operator-managed password has been configured.
+            // Removing the private secret must disable the assessment account
+            // on the next backend restart, even if it was enabled previously.
+            userRepository.findByEmailIgnoreCase(ADMIN_EMAIL).ifPresent(admin -> {
+                if (admin.isEnabled()) {
+                    admin.setEnabled(false);
+                    userRepository.saveAndFlush(admin);
+                }
+            });
             return;
         }
 

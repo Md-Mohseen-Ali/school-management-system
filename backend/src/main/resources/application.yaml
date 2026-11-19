@@ -48,3 +48,6 @@ security:
 app:
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
+  demo:
+    # Never publish this value in the frontend or repository.
+    admin-password: ${DEMO_ADMIN_PASSWORD:}

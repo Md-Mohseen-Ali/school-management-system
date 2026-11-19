@@ -1,6 +1,6 @@
 # School Management System — Entity Relationship Diagram
 
-This diagram is based on the Flyway schema in the backend migration directory. It describes the current PostgreSQL relational model. Migration V6 aligns the `fee_invoices.status` database default with the existing DRAFT-first application lifecycle. Migration V7 adds a separate public access-request table; it creates no user relationship until an administrator approves a request.
+This diagram is based on the Flyway schema in the backend migration directory. It describes the current PostgreSQL relational model. Migration V6 aligns the `fee_invoices.status` database default with the existing DRAFT-first application lifecycle. Migration V7 adds a separate public access-request table; it creates no user relationship until an administrator approves a request. Migration V8 adds a required identity-verification attestation, PostgreSQL-backed hashed request-throttling counters, and disables the fixed seeded Admin password until a private backend password is configured.
 
 ## Logical data model
 
@@ -47,7 +47,8 @@ erDiagram
 |---|---|---|
 | app_users | Login identity, name, email, password hash, phone, enabled flag | Referenced by role links, staff/guardian profiles, optional student profile, invoice creator, payment receiver and audit actor |
 | app_user_roles | User-to-role assignments | Composite key: user_id + role |
-| account_access_requests | Untrusted public request data, requested role, review state and administrator decision | Optional reviewer reference to app_users; applicants are not app_users until approval |
+| account_access_requests | Untrusted public request data, requested role, review state, identity-verification attestation and administrator decision | Optional reviewer reference to app_users; applicants are not app_users until approval |
+| account_request_rate_limits | Hashed email/source-address keys, fixed-window start time and attempt counter | Independent abuse-control table; stores no raw email or IP values |
 | teacher_profiles | Staff-specific employee code, hire date and active state | One-to-one with app_users |
 | guardian_profiles | Guardian-specific alternate phone | One-to-one with app_users |
 | students | Admission identity, name, dates and academic status | Optional one-to-one login; enrollments, family links, attendance, marks and invoices |

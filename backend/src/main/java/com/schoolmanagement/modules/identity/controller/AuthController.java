@@ -1,5 +1,7 @@
 package com.schoolmanagement.modules.identity.controller;
 
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -36,6 +38,8 @@ import jakarta.validation.Valid;
 @RestController
 @RequestMapping("/api/v1/auth")
 public class AuthController {
+
+    private static final ZoneId SCHOOL_ZONE = ZoneId.of("Asia/Kolkata");
 
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;

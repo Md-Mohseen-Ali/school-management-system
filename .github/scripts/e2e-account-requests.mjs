@@ -53,6 +53,17 @@ async function run() {
     firstName:"Requested",lastName:"Student",admissionNumber:admission,email:sEmail
   },"Public student access request");
 
+  const limitedEmail=makeEmail("rate-limited");
+  const limitedPayload={requestedRole:"TEACHER",fullName:"Rate Limited Applicant",
+    email:limitedEmail,employeeCode:"RATE-"+stamp};
+  check("First public request for an email is accepted",
+    (await api(null,"/api/v1/account-requests","POST",limitedPayload)).status===201);
+  check("Repeated requests remain generic until the configured threshold",
+    (await api(null,"/api/v1/account-requests","POST",limitedPayload)).status===409 &&
+    (await api(null,"/api/v1/account-requests","POST",limitedPayload)).status===409);
+  check("Public account requests are throttled after three attempts per email",
+    (await api(null,"/api/v1/account-requests","POST",limitedPayload)).status===429);
+
   const badEmail=makeEmail("guardian-invalid");
   const badId=await request({
     requestedRole:"GUARDIAN",fullName:"Guardian Missing Student",
@@ -72,11 +83,16 @@ async function run() {
   });
   check("Public request cannot grant administrator role",adminRole.status===400);
 
+  const noAttestation=await api(admin,"/api/v1/account-requests/"+tId+"/approve","POST",
+    {initialPassword:initialSecret,reviewNote:"Attempt without identity attestation"});
+  check("Account request approval is rejected without identity verification attestation",
+    noAttestation.status===400);
+
   const teacherApproved=await expect("Admin approves and provisions teacher",
     await api(admin,"/api/v1/account-requests/"+tId+"/approve","POST",
-      {initialPassword:initialSecret,reviewNote:"Staff details verified"}),200);
+      {initialPassword:initialSecret,identityVerified:true,reviewNote:"In-person staff identity and employee code verified"}),200);
   check("Teacher approval response excludes credential material",
-    teacherApproved.status==="APPROVED" && !("initialPassword" in teacherApproved) &&
+    teacherApproved.status==="APPROVED" && teacherApproved.identityVerified===true && !("initialPassword" in teacherApproved) &&
     !("passwordHash" in teacherApproved));
   const newTeacher=await login(tEmail,initialSecret,"Approved teacher");
   const newTeacherMe=await expect("Approved teacher can read role profile",
@@ -86,7 +102,7 @@ async function run() {
 
   const guardianApproved=await expect("Admin approves and links guardian",
     await api(admin,"/api/v1/account-requests/"+gId+"/approve","POST",
-      {initialPassword:initialSecret,reviewNote:"Guardian details verified"}),200);
+      {initialPassword:initialSecret,identityVerified:true,reviewNote:"Callback to independently confirmed school contact completed"}),200);
   const newGuardian=await login(gEmail,initialSecret,"Approved guardian");
   const children=await expect("Approved guardian can see linked student",
     await api(newGuardian,"/api/v1/guardian/students"),200);
@@ -95,7 +111,7 @@ async function run() {
     rows(children).some(x=>x.admissionNumber==="ADM-2026-001"));
 
   const failed=await api(admin,"/api/v1/account-requests/"+badId+"/approve","POST",
-    {initialPassword:initialSecret});
+    {initialPassword:initialSecret,identityVerified:true,reviewNote:"Admission number checked against school records"});
   check("Guardian approval fails for an unknown admission number",failed.status===404);
   const failedLogin=await api(null,"/api/v1/auth/login","POST",
     {email:badEmail,password:initialSecret});
@@ -106,7 +122,7 @@ async function run() {
 
   const studentApproved=await expect("Admin approves student admission request",
     await api(admin,"/api/v1/account-requests/"+sId+"/approve","POST",
-      {initialPassword:initialSecret,reviewNote:"Admission details verified"}),200);
+      {initialPassword:initialSecret,identityVerified:true,reviewNote:"Admission identity checked against school records"}),200);
   const newStudent=await login(sEmail,initialSecret,"Approved student");
   const studentProfile=await expect("Approved student loads own portal profile",
     await api(newStudent,"/api/v1/student/profile"),200);
@@ -127,7 +143,7 @@ async function run() {
 
   await expect("Approved request cannot be reviewed twice",
     await api(admin,"/api/v1/account-requests/"+tId+"/approve","POST",
-      {initialPassword:["Another","Request","2026","!"].join("-")}),409);
+      {initialPassword:["Another","Request","2026","!"].join("-"),identityVerified:true,reviewNote:"Previously verified applicant"}),409);
   await expect("Rejected request cannot be approved",
     await api(admin,"/api/v1/account-requests/"+rejectId+"/approve","POST",
       {initialPassword:["Another","Request","2026","!"].join("-")}),409);

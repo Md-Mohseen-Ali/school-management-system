@@ -177,6 +177,8 @@ async function run() {
     await api(futureStudentToken,"/api/v1/student/profile"),200);
   const futureAcademics=await expect("Future student's academic overview is accessible",
     await api(futureStudentToken,"/api/v1/student/academics"),200);
+  const futureMe=await expect("Future account profile",
+    await api(futureStudentToken,"/api/v1/auth/me"),200);
   check("Future enrollment is not displayed as a current class or section",
     futureProfile.className==null && futureProfile.sectionName==null &&
     futureAcademics.student?.className==null && futureAcademics.student?.sectionName==null &&

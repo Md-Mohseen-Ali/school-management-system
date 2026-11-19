@@ -172,7 +172,7 @@ public class AuthController {
                             item.put("relationship", link.getRelationship());
                             item.put("primary", link.isPrimaryGuardian());
                             item.put("studentStatus", student.getStatus().name());
-                            enrollmentRepository.findCurrentEnrollment(student.getId(), LocalDate.now(SCHOOL_ZONE))
+                            enrollmentRepository.findCurrentEnrollments(student.getId(), LocalDate.now(SCHOOL_ZONE), PageRequest.of(0, 1)).stream().findFirst()
                                     .ifPresent(enrollment -> {
                                         item.put("className", enrollment.getSection().getSchoolClass().getName());
                                         item.put("sectionName", enrollment.getSection().getSectionName());

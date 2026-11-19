@@ -132,7 +132,7 @@ public class AuthController {
                 profile.put("dateOfBirth", student.getDateOfBirth());
                 profile.put("admissionDate", student.getAdmissionDate());
                 profile.put("studentStatus", student.getStatus().name());
-                enrollmentRepository.findFirstByStudent_IdAndEndDateIsNullOrderByStartDateDesc(student.getId())
+                enrollmentRepository.findCurrentEnrollment(student.getId(), LocalDate.now(SCHOOL_ZONE))
                         .ifPresent(enrollment -> addEnrollment(profile, enrollment));
             });
         } else if (roles.contains("ROLE_TEACHER")) {
@@ -170,7 +170,7 @@ public class AuthController {
                             item.put("relationship", link.getRelationship());
                             item.put("primary", link.isPrimaryGuardian());
                             item.put("studentStatus", student.getStatus().name());
-                            enrollmentRepository.findFirstByStudent_IdAndEndDateIsNullOrderByStartDateDesc(student.getId())
+                            enrollmentRepository.findCurrentEnrollment(student.getId(), LocalDate.now(SCHOOL_ZONE))
                                     .ifPresent(enrollment -> {
                                         item.put("className", enrollment.getSection().getSchoolClass().getName());
                                         item.put("sectionName", enrollment.getSection().getSectionName());

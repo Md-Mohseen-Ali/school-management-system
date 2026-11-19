@@ -5,6 +5,7 @@ import java.time.ZoneId;
 import java.util.List;
 
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
@@ -71,7 +72,7 @@ public class StudentPortalController {
     public StudentPortalProfileResponse getProfile(Authentication authentication) {
         Student student = findStudent(authentication.getName());
         StudentEnrollment enrollment = enrollmentRepository
-                .findCurrentEnrollment(student.getId(), LocalDate.now(SCHOOL_ZONE))
+                .findCurrentEnrollments(student.getId(), LocalDate.now(SCHOOL_ZONE), PageRequest.of(0, 1)).stream().findFirst()
                 .orElse(null);
 
         return new StudentPortalProfileResponse(

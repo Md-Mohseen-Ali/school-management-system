@@ -98,7 +98,7 @@ public class StudentPortalController {
     public StudentAcademicOverviewResponse getMyAcademics(Authentication authentication) {
         Student student = findStudent(authentication.getName());
         StudentEnrollment enrollment = enrollmentRepository
-                .findCurrentEnrollment(student.getId(), LocalDate.now(SCHOOL_ZONE))
+                .findCurrentEnrollments(student.getId(), LocalDate.now(SCHOOL_ZONE), PageRequest.of(0, 1)).stream().findFirst()
                 .orElse(null);
 
         List<com.schoolmanagement.modules.academic.dto.StudentSubjectTeacherResponse> subjects =

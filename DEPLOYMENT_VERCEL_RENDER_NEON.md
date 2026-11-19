@@ -141,6 +141,10 @@ If you later add a custom Vercel domain, include that exact origin too. Vercel p
 5. If the browser reports a CORS error, verify `CORS_ALLOWED_ORIGINS` exactly matches the Vercel production origin (scheme + hostname, no path and no trailing slash), then confirm the backend redeployed.
 6. If a login or data request fails, inspect Render backend logs and Vercel deployment/build logs. Do not put credentials into browser code or screenshots.
 
+## 7.1 Public account-request abuse controls
+
+The V8 backend uses PostgreSQL-backed counters to allow up to three attempts per normalized email address and 30 attempts per source IP in a rolling 15-minute window. On Render, the controller reads the client address from Cloudflare's `CF-Connecting-IP` header; it falls back to the socket address for local/test deployments and does not trust client-supplied `X-Forwarded-For` values. Keep Render's standard Cloudflare front door in place for the source-IP bucket to identify individual visitors correctly.
+
 ## 7. Free-tier limitations
 
 - Render Free web services sleep after 15 minutes without inbound traffic and may take about a minute to wake. Their local filesystem is ephemeral; persistent records must stay in PostgreSQL.

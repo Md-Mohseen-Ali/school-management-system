@@ -158,5 +158,28 @@ async function run() {
   check("Audit trail captures enrollment ending",
     auditEvents.some(x=>x.action==="STUDENT_ENROLLMENT_ENDED" &&
       String(x.entityId)===String(activeEnrollment.id)));
+
+  // A future-dated enrollment must not be exposed as the student's current
+  // class/section until its start date is reached.
+  const futureDate = new Date(Date.now()+30*86400000).toISOString().slice(0,10);
+  const futureEmail = "future-"+Date.now()+"@example.com";
+  const futureStudent = await expect("Admin creates a student with a future enrollment",
+    await api(admin,"/api/v1/academic/students","POST",{
+      admissionNumber:"E2E-FUTURE-"+Date.now(),firstName:"Future",lastName:"Student",
+      admissionDate:date,email:futureEmail,initialPassword:"Future@2026School"
+    }),201);
+  await expect("Admin schedules the student's future enrollment",
+    await api(admin,"/api/v1/academic/enrollments","POST",{
+      studentId:futureStudent.id,sectionId:first.id,startDate:futureDate
+    }),201);
+  const futureStudentToken=await login(futureEmail,"Future@2026School","Future student");
+  const futureProfile=await expect("Future student's profile is accessible",
+    await api(futureStudentToken,"/api/v1/student/profile"),200);
+  const futureAcademics=await expect("Future student's academic overview is accessible",
+    await api(futureStudentToken,"/api/v1/student/academics"),200);
+  check("Future enrollment is not displayed as a current class or section",
+    futureProfile.className==null && futureProfile.sectionName==null &&
+    futureAcademics.student?.className==null && futureAcademics.student?.sectionName==null &&
+    Array.isArray(futureAcademics.subjects) && futureAcademics.subjects.length===0);
 }
 run().catch(e=>check("Self-service E2E exception",false,e?.message||String(e))).finally(report);

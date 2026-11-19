@@ -6,7 +6,7 @@ This deployment uses three services:
 - **Backend:** Spring Boot 4.1.2 / Java 17 on Render as a Docker web service
 - **Database:** PostgreSQL on Neon
 
-The Vercel frontend uses `VITE_API_BASE_URL` to call the backend directly. The Spring Boot backend uses `CORS_ALLOWED_ORIGINS` to allow the exact Vercel production origin.
+The Vercel frontend uses `VITE_API_BASE_URL` to call the backend directly. The Spring Boot backend uses `CORS_ALLOWED_ORIGINS` to allow the exact Vercel production origin. The security-hardening release adds one backend-only `DEMO_ADMIN_PASSWORD` secret; it does not require a new Vercel variable or a new frontend domain.
 
 ## 1. Apply this deployment patch
 
@@ -108,7 +108,7 @@ Use the actual Render backend origin, with no trailing slash. It is a public API
 9. Deploy. Vercel builds the React app from `frontend` and serves `dist`.
 10. Copy the Vercel production domain, for example `https://YOUR-PROJECT.vercel.app`.
 
-The `frontend/vercel.json` file rewrites unmatched client-side routes to `index.html`, which is needed for Vite single-page application deep links. Vercel's Vite documentation describes this SPA fallback behavior.
+The `frontend/vercel.json` file rewrites unmatched client-side routes to `index.html`, which is needed for Vite single-page application deep links. The security-hardening update does not change the Vercel project, domain assignment, root directory or `VITE_API_BASE_URL`; keep the already-submitted production URL attached to the same Vercel project. Vercel's Vite documentation describes this SPA fallback behavior.
 
 **Important:** Vite embeds `VITE_API_BASE_URL` into the frontend at build time. If it changes, update the Vercel environment variable and redeploy the frontend.
 

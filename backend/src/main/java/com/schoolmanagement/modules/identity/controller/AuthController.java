@@ -3,6 +3,8 @@ package com.schoolmanagement.modules.identity.controller;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.LinkedHashMap;
+
+import org.springframework.data.domain.PageRequest;
 import java.util.List;
 import java.util.Map;
 
@@ -132,7 +134,7 @@ public class AuthController {
                 profile.put("dateOfBirth", student.getDateOfBirth());
                 profile.put("admissionDate", student.getAdmissionDate());
                 profile.put("studentStatus", student.getStatus().name());
-                enrollmentRepository.findCurrentEnrollment(student.getId(), LocalDate.now(SCHOOL_ZONE))
+                enrollmentRepository.findCurrentEnrollments(student.getId(), LocalDate.now(SCHOOL_ZONE), PageRequest.of(0, 1)).stream().findFirst()
                         .ifPresent(enrollment -> addEnrollment(profile, enrollment));
             });
         } else if (roles.contains("ROLE_TEACHER")) {

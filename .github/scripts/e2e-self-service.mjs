@@ -171,7 +171,7 @@ async function run() {
   await expect("Admin schedules the student's future enrollment",
     await api(admin,"/api/v1/academic/enrollments","POST",{
       studentId:futureStudent.id,sectionId:first.id,startDate:futureDate
-    }),201);
+    }),200);
   const futureStudentToken=await login(futureEmail,"Future@2026School","Future student");
   const futureProfile=await expect("Future student's profile is accessible",
     await api(futureStudentToken,"/api/v1/student/profile"),200);

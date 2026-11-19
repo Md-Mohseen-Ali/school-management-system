@@ -74,6 +74,7 @@ The Neon Free plan currently includes 1 GB PostgreSQL storage and 100 compute-ho
 | `DB_PASSWORD` | Neon database password |
 | `JWT_SECRET` | Fresh Base64-encoded random 32-byte secret |
 | `CORS_ALLOWED_ORIGINS` | Temporary value `http://localhost:5173`; replace after Vercel deploy with the exact Vercel production origin |
+| `DEMO_ADMIN_PASSWORD` | A unique private password (16–72 UTF-8 bytes) for `admin@school.demo`; store only in Render's secret environment settings |
 
 Render supplies `PORT`; the app uses `${PORT:8080}`. Do not hard-code the Render port.
 
@@ -83,7 +84,7 @@ Generate a fresh JWT secret locally in PowerShell and paste it directly into Ren
 [Convert]::ToBase64String([Security.Cryptography.RandomNumberGenerator]::GetBytes(32))
 ```
 
-11. Create the Web Service and inspect deploy logs. Spring Boot must connect to Neon and Flyway must apply migrations V1–V7.
+11. Create the Web Service and inspect deploy logs. Spring Boot must connect to Neon and Flyway must apply migrations V1–V8.
 12. Copy the backend service origin, for example `https://YOUR-API-NAME.onrender.com` (origin only, no trailing slash).
 13. Check `https://YOUR-API-NAME.onrender.com/actuator/health` returns `{"status":"UP"}`. An initial 502/503 can occur while a free service starts; inspect Render logs before changing code.
 
@@ -102,7 +103,7 @@ Generate a fresh JWT secret locally in PowerShell and paste it directly into Ren
 VITE_API_BASE_URL=https://YOUR-API-NAME.onrender.com
 ```
 
-Use the actual Render backend origin, with no trailing slash. It is a public API URL, not a secret. Do not put DB credentials or JWT signing secrets in Vercel.
+Use the actual Render backend origin, with no trailing slash. It is a public API URL, not a secret. Do not put DB credentials, JWT signing secrets or `DEMO_ADMIN_PASSWORD` in Vercel.
 
 9. Deploy. Vercel builds the React app from `frontend` and serves `dist`.
 10. Copy the Vercel production domain, for example `https://YOUR-PROJECT.vercel.app`.
@@ -132,9 +133,9 @@ If you later add a custom Vercel domain, include that exact origin too. Vercel p
 ## 6. Verify the deployed application
 
 1. Open the Vercel production URL in a private/incognito browser window.
-2. Sign in with the seeded administrator account:
-   - `admin@school.demo`
-   - `Admin@2026School`
+2. Sign in with the assessment administrator account:
+   - Email: `admin@school.demo`
+   - Password: the private value configured in Render as `DEMO_ADMIN_PASSWORD` (share it with evaluators only through a private channel). The fixed password from the original seed is disabled by migration V8.
 3. Check Dashboard, Students, Sections, Subjects, Enrollments, Attendance, Examinations, Fees and Audit.
 4. If the first backend request takes time, wait for Render to wake and retry once.
 5. If the browser reports a CORS error, verify `CORS_ALLOWED_ORIGINS` exactly matches the Vercel production origin (scheme + hostname, no path and no trailing slash), then confirm the backend redeployed.

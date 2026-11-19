@@ -128,6 +128,12 @@ public class AccountAccessRequestService {
                         HttpStatus.NOT_FOUND, "Account access request not found"));
         ensurePending(request);
 
+        if (!review.identityVerified() || review.reviewNote() == null
+                || review.reviewNote().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Verify the applicant's identity and record the verification details before approval");
+        }
+
         String password = review.initialPassword();
         if (password.getBytes(StandardCharsets.UTF_8).length > 72) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,

@@ -71,7 +71,7 @@ public class StudentPortalController {
     public StudentPortalProfileResponse getProfile(Authentication authentication) {
         Student student = findStudent(authentication.getName());
         StudentEnrollment enrollment = enrollmentRepository
-                .findFirstByStudent_IdAndEndDateIsNullOrderByStartDateDesc(student.getId())
+                .findCurrentEnrollment(student.getId(), LocalDate.now(SCHOOL_ZONE))
                 .orElse(null);
 
         return new StudentPortalProfileResponse(
@@ -97,7 +97,7 @@ public class StudentPortalController {
     public StudentAcademicOverviewResponse getMyAcademics(Authentication authentication) {
         Student student = findStudent(authentication.getName());
         StudentEnrollment enrollment = enrollmentRepository
-                .findFirstByStudent_IdAndEndDateIsNullOrderByStartDateDesc(student.getId())
+                .findCurrentEnrollment(student.getId(), LocalDate.now(SCHOOL_ZONE))
                 .orElse(null);
 
         List<com.schoolmanagement.modules.academic.dto.StudentSubjectTeacherResponse> subjects =

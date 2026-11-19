@@ -6,6 +6,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import jakarta.servlet.http.HttpServletRequest;
 
 import com.schoolmanagement.modules.identity.dto.*;
 import com.schoolmanagement.modules.identity.entity.AccountRequestStatus;
@@ -26,8 +27,9 @@ public class AccountAccessRequestController {
     @PreAuthorize("permitAll()")
     @ResponseStatus(HttpStatus.CREATED)
     public AccountAccessRequestSubmissionResponse submit(
-            @Valid @RequestBody CreateAccountAccessRequest request) {
-        return requestService.submit(request);
+            @Valid @RequestBody CreateAccountAccessRequest request,
+            HttpServletRequest servletRequest) {
+        return requestService.submit(request, servletRequest.getRemoteAddr());
     }
 
     @GetMapping

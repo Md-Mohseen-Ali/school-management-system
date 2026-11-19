@@ -19,7 +19,7 @@ This reference follows the current Spring controller mappings. For exact field c
 | GET | /auth/me | Any authenticated role | Current account identity and role-specific profile |
 | POST | /account-requests | Public | Submit a TEACHER, GUARDIAN or STUDENT access request; creates no login |
 | GET | /account-requests | ADMIN | List access requests; optional `status=PENDING`, `APPROVED` or `REJECTED` |
-| POST | /account-requests/{requestId}/approve | ADMIN | Verify and provision a requested account using an administrator-supplied initial password |
+| POST | /account-requests/{requestId}/approve | ADMIN | Provision a requested account only after explicit off-band identity-verification attestation, a verification note and an administrator-supplied initial password |
 | POST | /account-requests/{requestId}/reject | ADMIN | Reject a pending request with a reason |
 | POST | /identity/accounts | ADMIN | Directly create TEACHER or GUARDIAN account and role profile |
 | GET | /identity/teachers | ADMIN | List active teachers and profile/contact details |
@@ -45,9 +45,19 @@ For a guardian account, set role to GUARDIAN and use optional alternatePhone ins
 
 The public form accepts `requestedRole` values `TEACHER`, `GUARDIAN` or `STUDENT`, plus identity/contact fields relevant to that role. A teacher request requires `employeeCode`; a guardian request requires `studentAdmissionNumber` and `relationship`; a student request requires `admissionNumber`, `firstName` and `lastName`. All requests require `fullName` and `email`. No password is collected or stored in the request.
 
-A public submission returns a request reference and `PENDING` status. It does not create an app_user, student, teacher or guardian identity. An administrator reviews the request in **Access requests** and either rejects it with a reason or approves it with an initial password (12–72 characters). Approval runs account/profile creation and any guardian-to-student link in the same transaction. Guardian approval fails unless the admission number resolves to an existing student. Student approval creates the new student admission and login; the administrator must still create the class/section enrollment. Teacher approval creates staff identity; section/subject assignment remains an administrative step.
+A public submission returns a request reference and `PENDING` status. It does not create an app_user, student, teacher or guardian identity. Public attempts are throttled to three per normalized email and 30 per source address per 15-minute window by PostgreSQL-backed counters. An administrator reviews the request in **Access requests** and either rejects it with a reason or approves it with an initial password (12–72 characters), `identityVerified: true`, and a required verification note documenting the off-band check. Approval runs account/profile creation and any guardian-to-student link in the same transaction. Guardian approval fails unless the admission number resolves to an existing student. Student approval creates the new student admission and login; the administrator must still create the class/section enrollment. Teacher approval creates staff identity; section/subject assignment remains an administrative step.
 
-Approved passwords are BCrypt hashed and never returned. The administrator must communicate initial credentials securely. Email delivery, public request-status lookup, self-service password reset and automatic email invitation are not implemented.
+An approval request must include:
+
+```json
+{
+  "initialPassword": "Temporary-Password-2026",
+  "identityVerified": true,
+  "reviewNote": "In-person identity and school admission record checked"
+}
+```
+
+The backend rejects an approval that omits the attestation or verification note. The boolean is persisted and returned on the approved request, and the approval is audited. This is a mandatory manual/off-band verification control; it does not prove email ownership automatically. Approved passwords are BCrypt hashed and never returned. The administrator must communicate initial credentials securely. Email/OTP verification, email delivery, public request-status lookup, self-service password reset and automatic email invitation are not implemented.
 
 ## Academic administration
 

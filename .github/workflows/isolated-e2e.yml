@@ -132,7 +132,9 @@ jobs:
       - name: Test student, guardian and teacher self-service APIs
         env:
           API_BASE_URL: http://localhost:8080
-        run: node .github/scripts/e2e-self-service.mjs
+        run: |
+          set -o pipefail
+          node .github/scripts/e2e-self-service.mjs 2>&1 | tee "${RUNNER_TEMP}/e2e-self-service.log"
 
       - name: Test role account provisioning
         env:
@@ -161,4 +163,12 @@ jobs:
         with:
           name: isolated-e2e-backend-log
           path: ${{ runner.temp }}/backend.log
+          if-no-files-found: ignore
+
+      - name: Upload self-service E2E output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: self-service-e2e-output
+          path: ${{ runner.temp }}/e2e-self-service.log
           if-no-files-found: ignore
